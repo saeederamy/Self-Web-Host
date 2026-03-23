@@ -42,5 +42,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/
 ```
 
 ```bash
-curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r' | bash
+curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r' > install.sh
+chmod +x install.sh
+./install.sh
 ```
