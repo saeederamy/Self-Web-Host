@@ -1,16 +1,23 @@
 #!/bin/bash
-# Quick installer for Black Hub
+# Black Hub Quick Installer (Linux Optimized)
 
-# آدرس اصلاح شده برای دسترسی مستقیم به فایل‌ها
+# آدرس دقیق و مستقیم فایل‌های خام
 REPO_URL="https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main"
 
+echo "-----------------------------------"
 echo "Installing Black Hub..."
-# دانلود اسکریپت اصلی و مدیریتی
-curl -sLO "$REPO_URL/hub.py"
-curl -sLO "$REPO_URL/manage_hub.sh"
+echo "-----------------------------------"
 
-# اجازه دسترسی اجرایی
+# دانلود فایل‌ها با حذف کاراکترهای اضافه ویندوز در لحظه دانلود
+curl -sL "$REPO_URL/hub.py" | tr -d '\r' > hub.py
+curl -sL "$REPO_URL/manage_hub.sh" | tr -d '\r' > manage_hub.sh
+
+# دادن دسترسی اجرایی
 chmod +x manage_hub.sh
 
-echo "Installation complete. Starting manager..."
+echo "Installation complete!"
+echo "Starting Management Tool..."
+sleep 2
+
+# اجرای مدیریت
 ./manage_hub.sh
