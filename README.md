@@ -16,5 +16,5 @@
 
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/SSH-Reverse-Tunnel/refs/heads/main/Installv2.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ)
 ```
