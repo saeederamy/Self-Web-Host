@@ -37,12 +37,7 @@ A lightweight, powerful, and standalone web-based file manager written in Python
 ### 2. Installation
 Download the script and run the setup:
 
-```bash
-bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh)
-```
 
 ```bash
-curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r' > install.sh
-chmod +x install.sh
-./install.sh
+bash <(curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r')
 ```
