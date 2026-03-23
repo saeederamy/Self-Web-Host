@@ -1,67 +1,41 @@
-# 🛡️ Self Web Host
+# 🛡️ BLACK HUB - Advanced Personal File Server
 
-این اسکریپت به شما کمک می‌کند تا هاست حرفه ای روی سرور سخصی خود داشته باشید.
+A lightweight, powerful, and standalone web-based file manager written in Python. Manage, share, and edit your files from anywhere with a modern Glassmorphism UI.
 
-### ✨ ویژگی‌ها
-- ✅ نصب خودکار پیش‌نیازها
-- ✅ حذف سرور ایران برای کاهش هزینه‌ها
-- ✅ ساخت سرور خانگی
-- ✅ اجرا آسان
-- ✅ ساخت سرویس سیستمی برای پایداری در پس‌زمینه
-- ✅اجرا به صورت مولتی لوکیشن برای سرور خانگی با ایران
+---
 
+## ✨ Features (ویژگی‌ها)
 
-### ✨ ویژگی‌های اصلی (Key Features)
-مدیریت فایل تحت وب (Web-Based File Manager): دسترسی کامل به فایل‌ها و پوشه‌ها از طریق مرورگر بدون نیاز به نرم‌افزار جانبی.
+### 📂 File Management
+* **Web-Based Interface:** Access and manage files via any browser.
+* **Drag & Drop Upload:** Upload multiple files with a real-time progress bar.
+* **On-the-fly ZIP:** Download entire folders as a ZIP archive with one click.
+* **File Operations:** Copy, Move, Rename, and Delete files/folders easily.
 
-سیستم مدیریت کاربران (Role-Based Access):
+### 🔐 Security & Access
+* **Role-Based Access:** Separate passwords for **Admin** (Full control) and **Guest** (View/Download only).
+* **Folder Locking:** Protect specific directories with unique passwords.
+* **Access Logs:** Track all activities and IP addresses (Last 100 entries).
 
-پنل ادمین (Admin): دسترسی کامل به آپلود، حذف، ویرایش، تغییر نام و مدیریت لینک‌ها.
+### 🔗 Smart Sharing
+* **Public Links:** Generate shareable links for any file.
+* **Download Limits:** Set a maximum number of allowed downloads per link.
+* **Password Protected Links:** Add an extra layer of security to shared files.
 
-پنل مهمان (Guest): قابلیت مشاهده و دانلود فایل‌ها (بدون اجازه دسترسی به فایل‌های سیستمی و مدیریتی).
+### 🖥️ Multimedia & Editing
+* **In-Browser Preview:** View Images, PDFs, and play Videos/Audio directly in the browser.
+* **Live Code Editor:** Edit text-based files (`.py`, `.js`, `.html`, `.txt`, etc.) without downloading.
 
-آپلود پیشرفته (Drag & Drop Upload): قابلیت آپلود تکی یا دسته‌جمعی فایل‌ها با نمایش نوار پیشرفت (Progress Bar) به صورت Real-time.
+---
 
-پیش‌نمایش مالتی‌مدیا (In-Browser Preview):
+## 🚀 Quick Start (راهنمای نصب سریع)
 
-مشاهده مستقیم تصاویر و فایل‌های PDF.
+### 1. Requirements
+* Python 3.x
+* No external libraries needed! (Standard Library only)
 
-پخش فایل‌های ویدئویی و صوتی در محیط مرورگر.
-
-اشتراک‌گذاری هوشمند (Smart Sharing):
-
-تولید لینک مستقیم عمومی (Public Links) برای فایل‌ها.
-
-قابلیت محدود کردن تعداد دانلود (Download Limit).
-
-قابلیت گذاشتن رمز عبور روی لینک‌های اشتراک‌گذاری.
-
-امنیت پوشه‌ها (Folder Locking): امکان قفل کردن پوشه‌های خاص با رمز عبور مجزا برای امنیت بیشتر.
-
-ویرایشگر کد داخلی (Live Text Editor): ویرایش مستقیم فایل‌های متنی (txt, py, js, html, ...) در محیط وب بدون نیاز به دانلود و آپلود مجدد.
-
-عملیات فایل (File Operations): قابلیت کپی (Copy) و جابه‌جایی (Move) فایل‌ها و پوشه‌ها بین دایرکتوری‌های مختلف با رابط کاربری Picker.
-
-فشرده‌سازی در لحظه (On-the-fly ZIP): امکان دانلود کل یک پوشه به صورت فایل ZIP تنها با یک کلیک.
-
-گزارش‌گیری (Access Logs): ثبت دقیق فعالیت‌ها و IPهای متصل شده با قابلیت مشاهده و دانلود لاگ‌ها توسط ادمین.
-
-طراحی مدرن و شیشه‌ای (Glassmorphism UI): رابط کاربری تاریک (Dark Mode) و مدرن با استفاده از افکت‌های بلور و انیمیشن‌های نرم.
-
-جستجوی سریع (Instant Search): قابلیت فیلتر کردن و پیدا کردن سریع فایل‌ها در پوشه‌های شلوغ.
-
-🛠 جزئیات فنی (Technical Details)
-Standalone: کل پروژه در یک فایل پایتون است و نیاز به دیتابیس خارجی ندارد (از JSON برای ذخیره تنظیمات استفاده می‌کند).
-
-Cross-Platform: قابل اجرا روی ویندوز، لینوکس و اندروید (Termux).
-
-No Dependencies: فقط با کتابخانه‌های استاندارد پایتون نوشته شده و نیاز به نصب pip install ندارد.
-
-Lightweight: سرعت بسیار بالا در اجرا و مصرف بسیار کم منابع سرور.
-
-### 1.🚀 نحوه نصب و اجرا روی سرور Ubuntu 
-برای راه اندازی سریع تونل، دستور زیر را در ترمینال اوبونتو کپی و اجرا کنید:
-
+### 2. Installation
+Download the script and run the setup:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ)
