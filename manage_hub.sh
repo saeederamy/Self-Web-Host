@@ -20,12 +20,12 @@ while true; do
     echo "4) Stop Service"
     echo "5) Setup Nginx Reverse Proxy & SSL (HTTPS)"
     echo "6) Exit"
-    echo -n "Choose an option: "
-
-    # خواندن ورودی فقط از کیبورد (بدون تداخل با فایل)
+    
+    # چاپ پیام مستقیماً در خروجی خطا تا توسط متغیر ضبط نشود
+    echo -n -e "${CYAN}Choose an option: ${NC}" >&2
     read -r opt < /dev/tty
     
-    # پاکسازی ورودی از فضا و کاراکترهای مخفی
+    # پاکسازی ورودی
     opt=$(echo "$opt" | tr -d '\r\n ')
 
     case "$opt" in
@@ -39,30 +39,27 @@ while true; do
 [Unit]
 Description=Black Hub File Server
 After=network.target
-
 [Service]
 User=$USER
 WorkingDirectory=$WORKING_DIR
 ExecStart=/usr/bin/python3 $WORKING_DIR/$PY_SCRIPT run
 Restart=always
-
 [Install]
 WantedBy=multi-user.target
 EOF"
-            sudo systemctl daemon-reload
-            sudo systemctl enable $APP_NAME
-            sudo systemctl restart $APP_NAME
+            sudo systemctl daemon-reload && sudo systemctl enable $APP_NAME && sudo systemctl restart $APP_NAME
             echo -e "${GREEN}[✔] Service Started.${NC}" ;;
         4)
             sudo systemctl stop $APP_NAME
             echo -e "${RED}[!] Service Stopped.${NC}" ;;
         5)
-            echo -n "Enter your domain: "
+            echo -n "Enter your domain: " >&2
             read -r DOMAIN < /dev/tty
             DOMAIN=$(echo "$DOMAIN" | tr -d '\r\n ')
             [ -z "$DOMAIN" ] && continue
 
             sudo apt update && sudo apt install nginx certbot python3-certbot-nginx -y
+            
             PORT=$(grep "PORT=" fileserver.conf | cut -d'=' -f2 | tr -d '\r')
             [ -z "$PORT" ] && PORT=5000
 
