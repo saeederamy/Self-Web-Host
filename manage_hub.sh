@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# --- Configuration ---
+# --- Config ---
 APP_NAME="black-hub"
 PY_SCRIPT="hub.py"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
@@ -12,6 +12,14 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# تابع گرفتن ورودی امن از کیبورد
+ask_user() {
+    local prompt_msg="$1"
+    echo -n -e "${CYAN}$prompt_msg${NC}" >&2
+    read -r user_input < /dev/tty
+    echo "$user_input" | tr -d '\r\n '
+}
+
 while true; do
     echo -e "\n${CYAN}--- $APP_NAME Management Tool ---${NC}"
     echo "1) Initial Setup (Python & Dependencies)"
@@ -21,12 +29,7 @@ while true; do
     echo "5) Setup Nginx Reverse Proxy & SSL (HTTPS)"
     echo "6) Exit"
     
-    # چاپ پیام مستقیماً در خروجی خطا تا توسط متغیر ضبط نشود
-    echo -n -e "${CYAN}Choose an option: ${NC}" >&2
-    read -r opt < /dev/tty
-    
-    # پاکسازی ورودی
-    opt=$(echo "$opt" | tr -d '\r\n ')
+    opt=$(ask_user "Choose an option: ")
 
     case "$opt" in
         1)
@@ -39,35 +42,40 @@ while true; do
 [Unit]
 Description=Black Hub File Server
 After=network.target
+
 [Service]
 User=$USER
 WorkingDirectory=$WORKING_DIR
 ExecStart=/usr/bin/python3 $WORKING_DIR/$PY_SCRIPT run
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
 EOF"
-            sudo systemctl daemon-reload && sudo systemctl enable $APP_NAME && sudo systemctl restart $APP_NAME
-            echo -e "${GREEN}[✔] Service Started.${NC}" ;;
+            sudo systemctl daemon-reload
+            sudo systemctl enable $APP_NAME
+            sudo systemctl restart $APP_NAME
+            echo -e "${GREEN}[✔] Service Started Successfully.${NC}" ;;
         4)
             sudo systemctl stop $APP_NAME
             echo -e "${RED}[!] Service Stopped.${NC}" ;;
         5)
-            echo -n "Enter your domain: " >&2
-            read -r DOMAIN < /dev/tty
-            DOMAIN=$(echo "$DOMAIN" | tr -d '\r\n ')
+            DOMAIN=$(ask_user "Enter your domain (e.g. hub.example.com): ")
             [ -z "$DOMAIN" ] && continue
 
             sudo apt update && sudo apt install nginx certbot python3-certbot-nginx -y
             
+            # استخراج پورت
             PORT=$(grep "PORT=" fileserver.conf | cut -d'=' -f2 | tr -d '\r')
             [ -z "$PORT" ] && PORT=5000
 
             CONF="/etc/nginx/sites-available/$DOMAIN"
+            # استفاده از بک‌اسلش برای متغیرهای انجین‌اکس (حیاتی برای رفع ارور شما)
             sudo bash -c "cat > $CONF <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
+
     location / {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_set_header Host \$host;
@@ -80,14 +88,17 @@ server {
 EOF"
             sudo rm -f /etc/nginx/sites-enabled/default
             sudo ln -sf "$CONF" /etc/nginx/sites-enabled/
-            sudo nginx -t && sudo systemctl restart nginx
-            sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email ;;
+            
+            if sudo nginx -t; then
+                sudo systemctl restart nginx
+                sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
+                echo -e "${GREEN}[✔] HTTPS is now LIVE!${NC}"
+            else
+                echo -e "${RED}[!] Nginx test failed. Fix config.${NC}"
+            fi ;;
         6)
             exit 0 ;;
         *)
-            if [ -n "$opt" ]; then
-                echo -e "${RED}Invalid option: '$opt'${NC}"
-                sleep 1
-            fi ;;
+            if [ -n "$opt" ]; then echo -e "${RED}Invalid option: '$opt'${NC}" ; sleep 1 ; fi ;;
     esac
 done
