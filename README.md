@@ -38,9 +38,9 @@ A lightweight, powerful, and standalone web-based file manager written in Python
 Download the script and run the setup:
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ)
+bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh)
 ```
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ | bash
+curl -sSL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh | bash
 ```
