@@ -1,7 +1,7 @@
 #!/bin/bash
 # Quick installer for Black Hub
 
-REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main"
+REPO_URL="https://github.com/saeederamy/Self-Web-Host/main"
 
 echo "Installing Black Hub..."
 curl -sO "$REPO_URL/hub.py"
