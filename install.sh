@@ -1,6 +1,4 @@
 #!/bin/bash
-# Black Hub Quick Installer
-
 REPO_URL="https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main"
 
 echo "Installing Black Hub..."
@@ -10,6 +8,6 @@ curl -sL "$REPO_URL/manage_hub.sh" | tr -d '\r' > manage_hub.sh
 
 chmod +x manage_hub.sh
 
-echo "Installation complete. Opening manager..."
-# اجرای منیجر به صورت مستقیم
-./manage_hub.sh
+echo "Installation complete. Starting manager..."
+# اجرای منیجر با محیط ایزوله برای جلوگیری از لوپ ورودی
+exec ./manage_hub.sh
