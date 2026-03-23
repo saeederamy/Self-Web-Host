@@ -40,3 +40,7 @@ Download the script and run the setup:
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ)
 ```
+
+```bash
+curl -sSL [https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh](https://raw.githubusercontent.com/saeederamy/Self-Web-Host/refs/heads/main/install.sh?token=GHSAT0AAAAAADYRDVFGFXO2UXXRQVK76L662OBIHGQ) | bash
+```
