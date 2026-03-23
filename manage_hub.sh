@@ -12,70 +12,54 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# تابع گرفتن ورودی امن از کیبورد
-ask_user() {
-    local prompt_msg="$1"
-    echo -n -e "${CYAN}$prompt_msg${NC}" >&2
-    read -r user_input < /dev/tty
-    echo "$user_input" | tr -d '\r\n '
+ask() {
+    echo -n -e "${CYAN}$1${NC}" >&2
+    read -r res < /dev/tty
+    echo "$res" | tr -d '\r\n '
 }
 
 while true; do
     echo -e "\n${CYAN}--- $APP_NAME Management Tool ---${NC}"
-    echo "1) Initial Setup (Python & Dependencies)"
-    echo "2) Run Hub Manually"
-    echo "3) Install/Restart as System Service"
+    echo "1) Initial Setup"
+    echo "2) Run Manually"
+    echo "3) Install/Restart Service"
     echo "4) Stop Service"
-    echo "5) Setup Nginx Reverse Proxy & SSL (HTTPS)"
+    echo "5) Setup Nginx & SSL"
     echo "6) Exit"
     
-    opt=$(ask_user "Choose an option: ")
+    opt=$(ask "Choose an option: ")
 
     case "$opt" in
-        1)
-            sudo apt update && sudo apt install python3 python3-pip -y
-            python3 "$PY_SCRIPT" setup ;;
-        2)
-            python3 "$PY_SCRIPT" run ;;
+        1) sudo apt update && sudo apt install python3 python3-pip -y ; python3 "$PY_SCRIPT" setup ;;
+        2) python3 "$PY_SCRIPT" run ;;
         3)
-            sudo bash -c "cat > $SERVICE_FILE <<EOF
+            sudo tee $SERVICE_FILE > /dev/null <<EOF
 [Unit]
-Description=Black Hub File Server
+Description=Black Hub
 After=network.target
-
 [Service]
 User=$USER
 WorkingDirectory=$WORKING_DIR
 ExecStart=/usr/bin/python3 $WORKING_DIR/$PY_SCRIPT run
 Restart=always
-
 [Install]
 WantedBy=multi-user.target
-EOF"
-            sudo systemctl daemon-reload
-            sudo systemctl enable $APP_NAME
-            sudo systemctl restart $APP_NAME
-            echo -e "${GREEN}[✔] Service Started Successfully.${NC}" ;;
-        4)
-            sudo systemctl stop $APP_NAME
-            echo -e "${RED}[!] Service Stopped.${NC}" ;;
+EOF
+            sudo systemctl daemon-reload && sudo systemctl enable $APP_NAME && sudo systemctl restart $APP_NAME
+            echo -e "${GREEN}[✔] Service Started.${NC}" ;;
+        4) sudo systemctl stop $APP_NAME ;;
         5)
-            DOMAIN=$(ask_user "Enter your domain (e.g. hub.example.com): ")
+            DOMAIN=$(ask "Enter domain: ")
             [ -z "$DOMAIN" ] && continue
-
             sudo apt update && sudo apt install nginx certbot python3-certbot-nginx -y
-            
-            # استخراج پورت
             PORT=$(grep "PORT=" fileserver.conf | cut -d'=' -f2 | tr -d '\r')
             [ -z "$PORT" ] && PORT=5000
 
-            CONF="/etc/nginx/sites-available/$DOMAIN"
-            # استفاده از بک‌اسلش برای متغیرهای انجین‌اکس (حیاتی برای رفع ارور شما)
-            sudo bash -c "cat > $CONF <<EOF
+            # استفاده از متد ضد-ارور برای نوشتن فایل کانفیگ
+            sudo tee /etc/nginx/sites-available/$DOMAIN > /dev/null <<EOF
 server {
     listen 80;
     server_name $DOMAIN;
-
     location / {
         proxy_pass http://127.0.0.1:$PORT;
         proxy_set_header Host \$host;
@@ -85,20 +69,18 @@ server {
         client_max_body_size 10G;
     }
 }
-EOF"
+EOF
             sudo rm -f /etc/nginx/sites-enabled/default
-            sudo ln -sf "$CONF" /etc/nginx/sites-enabled/
+            sudo ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
             
             if sudo nginx -t; then
                 sudo systemctl restart nginx
                 sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
-                echo -e "${GREEN}[✔] HTTPS is now LIVE!${NC}"
+                echo -e "${GREEN}[✔] SSL OK.${NC}"
             else
-                echo -e "${RED}[!] Nginx test failed. Fix config.${NC}"
+                echo -e "${RED}[!] Nginx test failed.${NC}"
             fi ;;
-        6)
-            exit 0 ;;
-        *)
-            if [ -n "$opt" ]; then echo -e "${RED}Invalid option: '$opt'${NC}" ; sleep 1 ; fi ;;
+        6) exit 0 ;;
+        *) [ -n "$opt" ] && echo "Invalid: $opt" ;;
     esac
 done
