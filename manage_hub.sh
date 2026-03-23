@@ -5,11 +5,13 @@ APP_NAME="black-hub"
 PY_SCRIPT="hub.py"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 WORKING_DIR=$(pwd)
+CONF_FILE="fileserver.conf"
 
 # --- Colors ---
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 ask() {
@@ -18,14 +20,22 @@ ask() {
     echo "$res" | tr -d '\r\n '
 }
 
+# ایجاد میانبر سیستم (self-hub command)
+if [ ! -f "/usr/local/bin/self-hub" ]; then
+    sudo ln -sf "$WORKING_DIR/manage_hub.sh" /usr/local/bin/self-hub
+    sudo chmod +x /usr/local/bin/self-hub
+fi
+
 while true; do
     echo -e "\n${CYAN}--- $APP_NAME Management Tool ---${NC}"
     echo "1) Initial Setup"
-    echo "2) Run Manually"
+    echo "2) Run Hub Manually (Debug)"
     echo "3) Install/Restart Service"
     echo "4) Stop Service"
     echo "5) Setup Nginx & SSL"
-    echo "6) Exit"
+    echo -e "${YELLOW}6) Show Credentials & Info${NC}"
+    echo -e "${RED}7) Full Uninstall (Nuclear Option)${NC}"
+    echo "8) Exit"
     
     opt=$(ask "Choose an option: ")
 
@@ -47,15 +57,13 @@ WantedBy=multi-user.target
 EOF
             sudo systemctl daemon-reload && sudo systemctl enable $APP_NAME && sudo systemctl restart $APP_NAME
             echo -e "${GREEN}[✔] Service Started.${NC}" ;;
-        4) sudo systemctl stop $APP_NAME ;;
+        4) sudo systemctl stop $APP_NAME ; echo "Stopped." ;;
         5)
             DOMAIN=$(ask "Enter domain: ")
             [ -z "$DOMAIN" ] && continue
             sudo apt update && sudo apt install nginx certbot python3-certbot-nginx -y
-            PORT=$(grep "PORT=" fileserver.conf | cut -d'=' -f2 | tr -d '\r')
+            PORT=$(grep "PORT=" $CONF_FILE | cut -d'=' -f2 | tr -d '\r')
             [ -z "$PORT" ] && PORT=5000
-
-            # استفاده از متد ضد-ارور برای نوشتن فایل کانفیگ
             sudo tee /etc/nginx/sites-available/$DOMAIN > /dev/null <<EOF
 server {
     listen 80;
@@ -72,15 +80,43 @@ server {
 EOF
             sudo rm -f /etc/nginx/sites-enabled/default
             sudo ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
-            
             if sudo nginx -t; then
                 sudo systemctl restart nginx
                 sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
-                echo -e "${GREEN}[✔] SSL OK.${NC}"
-            else
-                echo -e "${RED}[!] Nginx test failed.${NC}"
+                echo -e "DOMAIN=$DOMAIN" >> $CONF_FILE
+                echo -e "${GREEN}[✔] SSL & Nginx Ready.${NC}"
             fi ;;
-        6) exit 0 ;;
+        6)
+            echo -e "\n${YELLOW}--- Current Configurations ---${NC}"
+            if [ -f "$CONF_FILE" ]; then
+                cat "$CONF_FILE"
+            else
+                echo "No configuration found. Run Setup first."
+            fi ;;
+        7)
+            confirm=$(ask "ARE YOU SURE? This will delete EVERYTHING (y/n): ")
+            if [ "$confirm" == "y" ]; then
+                echo "Stopping and removing service..."
+                sudo systemctl stop $APP_NAME 2>/dev/null
+                sudo systemctl disable $APP_NAME 2>/dev/null
+                sudo rm -f $SERVICE_FILE
+                sudo systemctl daemon-reload
+                
+                echo "Removing Nginx configs..."
+                D_NAME=$(grep "DOMAIN=" $CONF_FILE | cut -d'=' -f2)
+                if [ -n "$D_NAME" ]; then
+                    sudo rm -f /etc/nginx/sites-enabled/$D_NAME
+                    sudo rm -f /etc/nginx/sites-available/$D_NAME
+                    sudo systemctl restart nginx
+                fi
+
+                echo "Deleting files..."
+                rm -f hub.py manage_hub.sh install.sh $CONF_FILE
+                sudo rm -f /usr/local/bin/self-hub
+                echo -e "${RED}Uninstall complete. Bye!${NC}"
+                exit 0
+            fi ;;
+        8) exit 0 ;;
         *) [ -n "$opt" ] && echo "Invalid: $opt" ;;
     esac
 done
