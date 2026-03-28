@@ -1,9 +1,10 @@
-import http.server, socketserver, os, urllib.parse, html, hashlib, sys, argparse, shutil, re, json, uuid, datetime, tempfile
+import http.server, socketserver, os, urllib.parse, html, hashlib, sys, argparse, shutil, re, json, uuid, datetime, tempfile, time
 
 CONFIG_FILE = "fileserver.conf"
 LINKS_FILE = "public_links.json"
 LOCKS_FILE = "folder_locks.json"
 LOG_FILE = "access_log.txt"
+BLOCK_FILE = "ip_blocks.json"
 
 def load_json(path):
     if os.path.exists(path):
@@ -23,6 +24,26 @@ def add_log(ip, action):
     lines.append(new_entry)
     with open(LOG_FILE, "w", encoding="utf-8") as f:
         f.writelines(lines[-100:])
+
+def check_ip(ip):
+    b = load_json(BLOCK_FILE)
+    if ip in b and b[ip].get('block_until', 0) > time.time(): return True
+    return False
+
+def rec_fail(ip):
+    b = load_json(BLOCK_FILE); now = time.time()
+    if ip not in b: b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
+    else:
+        b[ip]['fails'] = 1 if now - b[ip]['last'] > 86400 else b[ip]['fails'] + 1
+        b[ip]['last'] = now
+    if b[ip]['fails'] >= 15: 
+        b[ip]['block_until'] = now + 86400
+        add_log(ip, "BANNED FOR 24 HOURS (Brute-Force)")
+    save_json(b, BLOCK_FILE)
+
+def clr_fail(ip):
+    b = load_json(BLOCK_FILE)
+    if ip in b: del b[ip]; save_json(b, BLOCK_FILE)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE): return None
@@ -55,6 +76,9 @@ COMMON_STYLE = """
         background-image: radial-gradient(circle at center, #111 0%, #000 100%);
     }}
     .glass-box {{ background: var(--card); backdrop-filter: var(--glass); border: 1px solid var(--border); border-radius: 16px; }}
+    .tree-item {{ padding: 10px 15px; cursor: pointer; border-radius: 6px; transition: 0.2s; color: var(--text); font-size: 14px; margin-bottom: 2px; display:flex; align-items:center; }}
+    .tree-item:hover {{ background: rgba(255,255,255,0.08); }}
+    .tree-item.selected {{ background: rgba(255,255,255,0.15); color: #fff; font-weight: bold; border: 1px solid var(--border); }}
 """
 
 UI_HTML = """
@@ -118,17 +142,28 @@ UI_HTML = """
 
     <div id="previewModal" class="modal"><div class="modal-content"><span class="modal-close" onclick="closePreview()">&times;</span><div id="previewBody" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;"></div></div></div>
     
+    <div id="treeModal" class="modal">
+        <div class="modal-content" style="flex-direction:column; background:#111; padding:20px; border-radius:12px; border:1px solid var(--border); width:90%; max-width:450px; height:70%;">
+            <h3 id="tree-title" style="margin:0 0 15px 0; color:#fff;">Select Destination</h3>
+            <div id="tree-list" style="flex:1; overflow-y:auto; background:#050505; border:1px solid #333; border-radius:8px; padding:10px;"></div>
+            <div style="margin-top:15px; display:flex; gap:10px; width:100%; justify-content:flex-end;">
+                <button class="btn" onclick="document.getElementById('treeModal').style.display='none'">Cancel</button>
+                <button class="btn btn-action" onclick="confirmTreeAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
     <div id="logModal" class="modal">
         <div class="modal-content" style="flex-direction:column; background:#111; padding:20px; border-radius:12px; border:1px solid var(--border); width:80%; height:80%;">
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:15px;">
-                <h3 style="margin:0; color:#fff;">Access Logs (Last 100)</h3>
+                <h3 style="margin:0; color:#fff;">Access Logs</h3>
                 <div style="display:flex; gap:10px;">
-                    <a href="/download_logs" class="btn" style="background:#222; border-color:#444;">📥 Download .txt</a>
-                    <button class="btn" style="background:rgba(255,0,0,0.1); color:#ff4444; border-color:#600;" onclick="clearLogs()">🗑️ Clear Logs</button>
+                    <a href="/download_logs" class="btn" style="background:#222; border-color:#444;">📥 Download</a>
+                    <button class="btn" style="background:rgba(255,0,0,0.1); color:#ff4444; border-color:#600;" onclick="clearLogs()">🗑️ Clear</button>
                 </div>
             </div>
             <textarea readonly id="log-viewer" style="width:100%; height:85%; background:#050505; color:#0f0; border:1px solid #333; padding:15px; font-family:monospace; font-size:12px; resize:none; border-radius:8px; outline:none; box-sizing:border-box;">{log_data}</textarea>
-            <div style="margin-top:15px; display:flex; gap:10px; width:100%; justify-content:flex-end;">
+            <div style="margin-top:15px; display:flex; justify-content:flex-end;">
                 <button class="btn" onclick="document.getElementById('logModal').style.display='none'">Close</button>
             </div>
         </div>
@@ -146,6 +181,8 @@ UI_HTML = """
     </div>
 
     <script>
+        const currentDir = "{current_dir}";
+        
         function doSearch() {{
             let q = document.getElementById('search').value.toLowerCase();
             document.querySelectorAll('.file-item').forEach(item => {{
@@ -166,12 +203,40 @@ UI_HTML = """
         }}
         function closePreview() {{ document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }}
         
-        const currentDir = "{current_dir}";
+        // Tree Logic for Move/Copy
+        let treeAction = ''; let treeTarget = ''; let treeSelected = null;
+        function openTreeModal(act, tgt) {{
+            treeAction = act; treeTarget = tgt; treeSelected = null;
+            document.getElementById('tree-title').innerText = (act === 'move' ? 'Move ' : 'Copy ') + tgt;
+            document.getElementById('treeModal').style.display = 'flex';
+            document.getElementById('tree-list').innerHTML = '<div style="color:#888;text-align:center;padding:20px;">Loading folders...</div>';
+            
+            fetch('/action', {{method:'POST', body:new URLSearchParams({{action:'get_tree'}})}}).then(r=>r.json()).then(dirs => {{
+                let h = '';
+                dirs.forEach(d => {{
+                    let pad = d === '/' ? 0 : (d.split('/').length - 1) * 20;
+                    let name = d === '/' ? 'Root ( / )' : d.split('/').pop();
+                    h += `<div class="tree-item" style="padding-left:${{pad + 15}}px" onclick="selectTreeItem(this, '${{d}}')">📁 ${{name}}</div>`;
+                }});
+                document.getElementById('tree-list').innerHTML = h;
+            }});
+        }}
+        function selectTreeItem(el, path) {{
+            document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            treeSelected = path === '/' ? '' : path.substring(1);
+        }}
+        function confirmTreeAction() {{
+            if(treeSelected === null) return alert('Please select a destination folder.');
+            fetch('/action', {{method:'POST', body:new URLSearchParams({{action:treeAction, target:treeTarget, dir:currentDir, dest:treeSelected}})}}).then(()=>location.reload());
+        }}
+
         function clearLogs() {{ if(confirm('Clear all logs?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'clear_logs'}}) }}).then(()=>location.reload()); }}
         function createFolder() {{ let n = prompt("Folder Name:"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkdir', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
+        function createFile() {{ let n = prompt("File Name (e.g. index.html):"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkfile', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
         function deleteItem(n) {{ if(confirm('Delete ' + n + '?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'delete', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function moveItem(n) {{ let dest = prompt("Move to path:", currentDir); if(dest !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'move', target:n, dir:currentDir, dest:dest}}) }}).then(()=>location.reload()); }}
-        function copyItem(n) {{ let dest = prompt("Copy to path:", currentDir); if(dest !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'copy', target:n, dir:currentDir, dest:dest}}) }}).then(()=>location.reload()); }}
+        function moveItem(n) {{ openTreeModal('move', n); }}
+        function copyItem(n) {{ openTreeModal('copy', n); }}
         function lockFolder(n) {{ let pwd = prompt("Set Folder Password (empty to unlock):"); if(pwd !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'lock_folder', target:n, dir:currentDir, pwd:pwd}}) }}).then(()=>location.reload()); }}
         
         function shareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share', target:n, dir:currentDir}}) }}).then(r=>r.text()).then(l=>{{ prompt("Public Link:", window.location.origin+l); location.reload(); }}); }}
@@ -179,6 +244,7 @@ UI_HTML = """
         function pwdShareItem(n) {{ let pwd = prompt("Set password:"); if(pwd) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share_pwd', target:n, dir:currentDir, pwd:pwd}}) }}).then(r=>r.text()).then(l=>{{ prompt("Link:", window.location.origin+l); location.reload(); }}); }}
         function renewItem(n) {{ if(confirm('Renew link for ' + n + '?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'renew', target:n, dir:currentDir}}) }}).then(r=>r.text()).then(l=>{{ prompt("New Link:", window.location.origin+l); location.reload(); }}); }}
         function unshareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'unshare', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
+        function viewLink(tk) {{ prompt("Shared Link:", window.location.origin + "/p/" + tk); }}
 
         function editItem(n) {{
             fetch('/download/' + currentDir + '/' + n).then(r => r.text()).then(t => {{
@@ -249,6 +315,10 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return "" if r == "." else r
 
     def do_GET(self):
+        if check_ip(self.client_address[0]):
+            self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;"><div class="glass-box" style="padding:40px;text-align:center;"><h1 style="color:var(--accent-red);margin:0;">🚫 ACCESS DENIED</h1><p style="color:var(--subtext);margin-top:15px;">Your IP has been temporarily blocked for 24 hours.</p></div></body>')
+            return
+
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/download_logs" and self.get_role() == "admin":
             if os.path.exists(LOG_FILE): return self._send_file(LOG_FILE, dl=True, name="access_log.txt")
@@ -274,10 +344,13 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         save_json(lns, LINKS_FILE)
                     return self._send_file(target, dl=True)
             return self.send_error(404)
+        
         role = self.get_role()
         if not role: self._send_resp(LOGIN_HTML.format(site_name=self.CONFIG['SITE_NAME'])); return
+        
         q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]; curr = self.get_safe_path(q)
         rel_curr = self.get_rel(curr)
+        
         if parsed.path.startswith("/zip/"):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[5:]))
             if not self.check_folder_lock(self.get_rel(target)): return
@@ -311,23 +384,46 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return True
 
     def do_POST(self):
+        if check_ip(self.client_address[0]): self.send_error(403); return
         parsed = urllib.parse.urlparse(self.path)
+        
         if parsed.path == "/login":
             l = int(self.headers.get('Content-Length', 0)); pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
             if pwd == self.CONFIG['ADMIN_PWD'] or pwd == self.CONFIG['GUEST_PWD']:
+                clr_fail(self.client_address[0])
                 add_log(self.client_address[0], "Login Successful")
                 tk = hashlib.sha256(pwd.encode()).hexdigest(); self.send_response(302); self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
-            else: self.send_error(401); return
+            else: 
+                rec_fail(self.client_address[0]); self.send_error(401); return
+                
         if self.get_role() != "admin": return
         q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]; curr = self.get_safe_path(q)
+        
         if parsed.path == "/upload": self._handle_upload(curr)
         elif parsed.path == "/action":
             l = int(self.headers.get('Content-Length', 0)); data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             act, target = data.get('action',[''])[0], data.get('target',[''])[0]
+            
+            # ارسال لیست درخت پوشه‌ها به فرانت‌اند
+            if act == 'get_tree':
+                base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
+                dirs = ["/"]
+                for root, d_names, _ in os.walk(base):
+                    for d in d_names:
+                        full = os.path.join(root, d)
+                        rel = os.path.relpath(full, base).replace('\\', '/')
+                        dirs.append("/" + rel)
+                dirs.sort()
+                self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(json.dumps(dirs).encode()); return
+
             if act == 'clear_logs':
                 open(LOG_FILE, 'w').close(); add_log(self.client_address[0], "Logs cleared"); self.send_response(200); self.end_headers(); return
+            
             tp = os.path.join(curr, target); rel = self.get_rel(tp)
             if act == 'mkdir': os.makedirs(tp, exist_ok=True)
+            elif act == 'mkfile': 
+                if not os.path.exists(tp): open(tp, 'w', encoding='utf-8').close()
             elif act == 'delete' and os.path.exists(tp): shutil.rmtree(tp) if os.path.isdir(tp) else os.remove(tp)
             elif act in ['move', 'copy']:
                 dest = self.get_safe_path(data.get('dest', [''])[0])
@@ -357,7 +453,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
     def _serve_ui(self, role, curr, req_dir):
         pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
         for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button>' if role == 'admin' else ''
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:10px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(0,255,0,0.1); color:#0f0;" onclick="document.getElementById(\'logModal\').style.display=\'flex\'">📜 Logs</button>' if role == 'admin' else ''
         up_area = '<div class="glass-box" id="drop-zone" style="padding:20px; text-align:center; margin-bottom:20px; cursor:pointer; border-style:dashed;"><p style="font-size:13px; color:var(--subtext);">Drop files to upload</p><input type="file" id="file-input" hidden multiple><div id="progress-wrapper" style="display:none; height:2px; background:#222; margin-top:10px;"><div id="progress-bar" style="width:0; height:100%; background:#fff;"></div></div></div>' if role == 'admin' else ''
         lns = load_json(LINKS_FILE); locks = load_json(LOCKS_FILE); log_content = ""
@@ -368,7 +464,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         try: files = sorted(os.listdir(curr))
         except: files = []
         for f in files:
-            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE]: continue
+            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE]: continue
             full = os.path.join(curr, f); rel = self.get_rel(full); is_d = os.path.isdir(full); stat = os.stat(full)
             size = format_size(stat.st_size) if not is_d else "--"; date = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
             if is_d:
@@ -380,14 +476,16 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 p_type = get_preview_type(f); dl = urllib.parse.quote(f"/{req_dir}/{f}".replace('//', '/'))
                 p_click = f"openPreview('/download{dl}', '{p_type}')" if p_type else f"window.location.href='/download{dl}'"
                 share_badge = ""
+                view_link_btn = ""
                 for tk, data in lns.items():
                     if (data.get('target') if isinstance(data, dict) else data) == rel:
                         pwd_hint = f" (Pass: {data.get('pwd')})" if isinstance(data, dict) and data.get('pwd') else ""
                         share_badge = f'<span style="color:var(--accent-red); font-size:9px; margin-left:8px;">● Shared{pwd_hint if role == "admin" else ""}</span>'
+                        view_link_btn = f'<button onclick="viewLink(\'{tk}\')">👁️ View Link</button>'
                         break
                 is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
                 if role == 'admin':
-                    s_btns = f'<button onclick="renewItem(\'{f}\')">🔄 Renew Link</button><button onclick="unshareItem(\'{f}\')">🚫 Unshare</button>' if share_badge else f'<button onclick="shareItem(\'{f}\')">🔗 Share Unlimited</button><button onclick="limitedShareItem(\'{f}\')">⏳ Limited Share</button><button onclick="pwdShareItem(\'{f}\')">🔑 Share (Password)</button>'
+                    s_btns = f'{view_link_btn}<button onclick="renewItem(\'{f}\')">🔄 Renew Link</button><button onclick="unshareItem(\'{f}\')">🚫 Unshare</button>' if share_badge else f'<button onclick="shareItem(\'{f}\')">🔗 Share Unlimited</button><button onclick="limitedShareItem(\'{f}\')">⏳ Limited Share</button><button onclick="pwdShareItem(\'{f}\')">🔑 Share (Password)</button>'
                     edit_btn = f'<button onclick="editItem(\'{f}\')">📝 Edit</button>' if is_text else ""
                     admin_h = f'{s_btns}{edit_btn}<button onclick="copyItem(\'{f}\')">📄 Copy</button><button onclick="moveItem(\'{f}\')">✂️ Move</button><button onclick="deleteItem(\'{f}\')" class="btn-del-text">🗑️ Delete</button>'
                 else: admin_h = ''
