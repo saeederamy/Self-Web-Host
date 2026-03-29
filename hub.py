@@ -2,7 +2,7 @@ import http.server, socketserver, os, urllib.parse, html, hashlib, sys, argparse
 
 CONFIG_FILE = "fileserver.conf"
 LINKS_FILE = "public_links.json"
-LOCKS_FILE = "folder_locks.json"
+LOCKS_FILE = "folder_locks.json" 
 LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
 
@@ -183,6 +183,26 @@ UI_HTML = """
     <script>
         const currentDir = "{current_dir}";
         
+        function handleItemClick(url, type, lockId) {{
+            if (lockId) {{
+                // استراتژی پرسش مجدد: کوکی قبلی را به صورت اجباری پاک می‌کنیم
+                document.cookie = "lock_" + lockId + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                
+                let p = prompt("🔒 This item is Locked. Please enter password:");
+                if (p) {{
+                    document.cookie = "lock_" + lockId + "=" + p + ";path=/";
+                }} else {{
+                    return; // اگر کنسل کرد، هیچ اتفاقی نمی‌افتد
+                }}
+            }}
+            
+            if (type === 'download') {{
+                window.location.href = url;
+            }} else {{
+                openPreview(url, type);
+            }}
+        }}
+
         function doSearch() {{
             let q = document.getElementById('search').value.toLowerCase();
             document.querySelectorAll('.file-item').forEach(item => {{
@@ -203,7 +223,6 @@ UI_HTML = """
         }}
         function closePreview() {{ document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }}
         
-        // Tree Logic for Move/Copy
         let treeAction = ''; let treeTarget = ''; let treeSelected = null;
         function openTreeModal(act, tgt) {{
             treeAction = act; treeTarget = tgt; treeSelected = null;
@@ -235,9 +254,10 @@ UI_HTML = """
         function createFolder() {{ let n = prompt("Folder Name:"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkdir', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
         function createFile() {{ let n = prompt("File Name (e.g. index.html):"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkfile', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
         function deleteItem(n) {{ if(confirm('Delete ' + n + '?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'delete', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
+        function renameItem(n) {{ let nn = prompt("Enter new name for: " + n, n); if(nn && nn !== n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'rename', target:n, new_name:nn, dir:currentDir}}) }}).then(()=>location.reload()); }}
         function moveItem(n) {{ openTreeModal('move', n); }}
         function copyItem(n) {{ openTreeModal('copy', n); }}
-        function lockFolder(n) {{ let pwd = prompt("Set Folder Password (empty to unlock):"); if(pwd !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'lock_folder', target:n, dir:currentDir, pwd:pwd}}) }}).then(()=>location.reload()); }}
+        function lockItem(n) {{ let pwd = prompt("Set Password (empty to unlock):"); if(pwd !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'lock_item', target:n, dir:currentDir, pwd:pwd}}) }}).then(()=>location.reload()); }}
         
         function shareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share', target:n, dir:currentDir}}) }}).then(r=>r.text()).then(l=>{{ prompt("Public Link:", window.location.origin+l); location.reload(); }}); }}
         function limitedShareItem(n) {{ let limit = prompt("Downloads limit:", "1"); if(limit && parseInt(limit)>0) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share_limit', target:n, dir:currentDir, limit:parseInt(limit)}}) }}).then(r=>r.text()).then(l=>{{ prompt("Link:", window.location.origin+l); location.reload(); }}); }}
@@ -246,7 +266,13 @@ UI_HTML = """
         function unshareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'unshare', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
         function viewLink(tk) {{ prompt("Shared Link:", window.location.origin + "/p/" + tk); }}
 
-        function editItem(n) {{
+        function editItem(n, lockId) {{
+            if (lockId) {{
+                document.cookie = "lock_" + lockId + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                let p = prompt("🔒 This item is Locked. Please enter password:");
+                if (p) document.cookie = "lock_" + lockId + "=" + p + ";path=/";
+                else return;
+            }}
             fetch('/download/' + currentDir + '/' + n).then(r => r.text()).then(t => {{
                 document.getElementById('edit-name').innerText = "Editing: " + n;
                 document.getElementById('edit-box').value = t;
@@ -353,17 +379,17 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         
         if parsed.path.startswith("/zip/"):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[5:]))
-            if not self.check_folder_lock(self.get_rel(target)): return
+            if not self.check_item_lock(self.get_rel(target)): return
             if os.path.isdir(target):
                 add_log(self.client_address[0], f"Downloaded ZIP: {self.get_rel(target)}")
                 tmp_base = tempfile.mktemp(); shutil.make_archive(tmp_base, 'zip', target); zip_path = tmp_base + '.zip'
                 self._send_file(zip_path, dl=True, name=os.path.basename(target)+".zip"); os.remove(zip_path)
             return
         if parsed.path == "/": 
-            if self.check_folder_lock(rel_curr): self._serve_ui(role, curr, q)
+            if self.check_item_lock(rel_curr): self._serve_ui(role, curr, q)
         elif parsed.path.startswith("/download/"):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[10:]))
-            if not self.check_folder_lock(self.get_rel(target)): return
+            if not self.check_item_lock(self.get_rel(target)): return
             if os.path.isfile(target): 
                 add_log(self.client_address[0], f"Downloaded File: {self.get_rel(target)}")
                 self._send_file(target, dl=True)
@@ -371,7 +397,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             add_log(self.client_address[0], "Logged Out")
             self.send_response(302); self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
 
-    def check_folder_lock(self, target_rel):
+    def check_item_lock(self, target_rel):
         role = self.get_role()
         if role == 'admin': return True
         locks = load_json(LOCKS_FILE)
@@ -379,7 +405,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             if is_in_locked_path(target_rel, l_path):
                 h = hashlib.md5(l_path.encode()).hexdigest()
                 if f"lock_{h}={l_pwd}" not in urllib.parse.unquote(self.headers.get('Cookie', '')):
-                    self._send_resp(f'<script>let p=prompt("Folder Locked. Password:"); if(p){{ document.cookie="lock_{h}="+p+";path=/"; location.reload(); }} else history.back();</script>')
+                    self._send_resp(f'<script>let p=prompt("Item Locked. Password:"); if(p){{ document.cookie="lock_{h}="+p+";path=/"; location.reload(); }} else history.back();</script>')
                     return False
         return True
 
@@ -404,7 +430,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             l = int(self.headers.get('Content-Length', 0)); data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             act, target = data.get('action',[''])[0], data.get('target',[''])[0]
             
-            # ارسال لیست درخت پوشه‌ها به فرانت‌اند
             if act == 'get_tree':
                 base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
                 dirs = ["/"]
@@ -425,6 +450,24 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             elif act == 'mkfile': 
                 if not os.path.exists(tp): open(tp, 'w', encoding='utf-8').close()
             elif act == 'delete' and os.path.exists(tp): shutil.rmtree(tp) if os.path.isdir(tp) else os.remove(tp)
+            elif act == 'rename' and os.path.exists(tp):
+                new_name = data.get('new_name', [''])[0]; new_tp = os.path.join(curr, new_name)
+                if new_name and not os.path.exists(new_tp):
+                    os.rename(tp, new_tp); new_rel = self.get_rel(new_tp)
+                    locks = load_json(LOCKS_FILE); l_changed = False; n_locks = {}
+                    for k, v in locks.items():
+                        if k == rel or k.startswith(rel + '/'): n_locks[new_rel + k[len(rel):]] = v; l_changed = True
+                        else: n_locks[k] = v
+                    if l_changed: save_json(n_locks, LOCKS_FILE)
+                    lns = load_json(LINKS_FILE); ln_changed = False
+                    for tk, l_data in lns.items():
+                        tgt = l_data.get('target') if isinstance(l_data, dict) else l_data
+                        if tgt == rel or tgt.startswith(rel + '/'):
+                            n_tgt = new_rel + tgt[len(rel):]
+                            if isinstance(l_data, dict): lns[tk]['target'] = n_tgt
+                            else: lns[tk] = n_tgt
+                            ln_changed = True
+                    if ln_changed: save_json(lns, LINKS_FILE)
             elif act in ['move', 'copy']:
                 dest = self.get_safe_path(data.get('dest', [''])[0])
                 if os.path.exists(tp):
@@ -433,7 +476,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     else: (shutil.copytree if os.path.isdir(tp) else shutil.copy2)(tp, final)
             elif act == 'save_text' and os.path.isfile(tp):
                 with open(tp, 'w', encoding='utf-8') as f: f.write(data.get('content', [''])[0])
-            elif act == 'lock_folder' and os.path.isdir(tp):
+            elif act == 'lock_item' and os.path.exists(tp):
                 locks = load_json(LOCKS_FILE); pwd = data.get('pwd', [''])[0]
                 if pwd: locks[rel] = pwd
                 else: locks.pop(rel, None)
@@ -463,18 +506,25 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         if pts: rows += f'<div class="file-item" data-name=".."><div class="file-info"><span style="font-size:18px">🔙</span><a href="/?dir={urllib.parse.quote("/".join(pts[:-1]))}" class="file-name">..</a></div></div>'
         try: files = sorted(os.listdir(curr))
         except: files = []
+        
         for f in files:
             if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE]: continue
             full = os.path.join(curr, f); rel = self.get_rel(full); is_d = os.path.isdir(full); stat = os.stat(full)
             size = format_size(stat.st_size) if not is_d else "--"; date = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+            
+            lock_id = hashlib.md5(rel.encode()).hexdigest() if rel in locks else ""
+            lock_info = f' <span style="color:#fa0; font-size:10px;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
+            
             if is_d:
                 nx = f"{req_dir}/{f}".strip('/')
-                lock_info = f' <span style="color:#fa0; font-size:10px;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
-                admin_h = f'<button onclick="window.location.href=\'/zip/{nx}\'">📦 Download ZIP</button><button onclick="lockFolder(\'{f}\')">🔒 Lock / Unlock</button><button onclick="copyItem(\'{f}\')">📄 Copy</button><button onclick="moveItem(\'{f}\')">✂️ Move</button><button onclick="deleteItem(\'{f}\')" class="btn-del-text">🗑️ Delete</button>' if role == 'admin' else f'<button onclick="window.location.href=\'/zip/{nx}\'">📦 Download ZIP</button>'
+                dl_zip_click = f"handleItemClick('/zip/{nx}', 'download', '{lock_id}')"
+                admin_h = f'<button onclick="{dl_zip_click}">📦 Download ZIP</button><button onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button onclick="renameItem(\'{f}\')">✏️ Rename</button><button onclick="copyItem(\'{f}\')">📄 Copy</button><button onclick="moveItem(\'{f}\')">✂️ Move</button><button onclick="deleteItem(\'{f}\')" class="btn-del-text">🗑️ Delete</button>' if role == 'admin' else f'<button onclick="{dl_zip_click}">📦 Download ZIP</button>'
                 rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span>📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span>{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(\'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
             else:
                 p_type = get_preview_type(f); dl = urllib.parse.quote(f"/{req_dir}/{f}".replace('//', '/'))
-                p_click = f"openPreview('/download{dl}', '{p_type}')" if p_type else f"window.location.href='/download{dl}'"
+                p_type_str = p_type if p_type else 'download'
+                p_click = f"handleItemClick('/download{dl}', '{p_type_str}', '{lock_id}')"
+                
                 share_badge = ""
                 view_link_btn = ""
                 for tk, data in lns.items():
@@ -483,13 +533,20 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         share_badge = f'<span style="color:var(--accent-red); font-size:9px; margin-left:8px;">● Shared{pwd_hint if role == "admin" else ""}</span>'
                         view_link_btn = f'<button onclick="viewLink(\'{tk}\')">👁️ View Link</button>'
                         break
+                        
                 is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
+                
                 if role == 'admin':
                     s_btns = f'{view_link_btn}<button onclick="renewItem(\'{f}\')">🔄 Renew Link</button><button onclick="unshareItem(\'{f}\')">🚫 Unshare</button>' if share_badge else f'<button onclick="shareItem(\'{f}\')">🔗 Share Unlimited</button><button onclick="limitedShareItem(\'{f}\')">⏳ Limited Share</button><button onclick="pwdShareItem(\'{f}\')">🔑 Share (Password)</button>'
-                    edit_btn = f'<button onclick="editItem(\'{f}\')">📝 Edit</button>' if is_text else ""
-                    admin_h = f'{s_btns}{edit_btn}<button onclick="copyItem(\'{f}\')">📄 Copy</button><button onclick="moveItem(\'{f}\')">✂️ Move</button><button onclick="deleteItem(\'{f}\')" class="btn-del-text">🗑️ Delete</button>'
-                else: admin_h = ''
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span>{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{share_badge}</span></div><div class="file-meta"><span>{date}</span><span>{size}</span></div><div class="actions" style="display:flex; align-items:center; gap:10px;"><a href="/download{dl}" class="btn">Download</a><button class="kebab-btn" onclick="toggleMenu(\'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                    edit_btn = f'<button onclick="editItem(\'{f}\', \'{lock_id}\')">📝 Edit</button>' if is_text else ""
+                    admin_h = f'{s_btns}{edit_btn}<button onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button onclick="renameItem(\'{f}\')">✏️ Rename</button><button onclick="copyItem(\'{f}\')">📄 Copy</button><button onclick="moveItem(\'{f}\')">✂️ Move</button><button onclick="deleteItem(\'{f}\')" class="btn-del-text">🗑️ Delete</button>'
+                else: 
+                    admin_h = ''
+                    
+                dl_btn = f'<button onclick="handleItemClick(\'/download{dl}\', \'download\', \'{lock_id}\')" class="btn">Download</button>'
+                
+                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span>{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}</span></div><div class="file-meta"><span>{date}</span><span>{size}</span></div><div class="actions" style="display:flex; align-items:center; gap:10px;">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(\'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+        
         self._send_resp(UI_HTML.format(site_name=self.CONFIG['SITE_NAME'], role=role.capitalize(), breadcrumbs=bc, admin_top_btn=admin_btn, admin_log_btn=admin_log_btn, admin_upload_area=up_area, file_rows=rows, current_dir=req_dir, log_data=log_content))
 
     def _handle_upload(self, curr):
