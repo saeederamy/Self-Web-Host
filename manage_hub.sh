@@ -32,10 +32,11 @@ while true; do
     echo "2) Run Hub Manually (Debug)"
     echo "3) Install/Restart Service"
     echo "4) Stop Service"
-    echo "5) Setup Nginx & SSL"
-    echo -e "${YELLOW}6) Show Credentials & Info${NC}"
-    echo -e "${RED}7) Full Uninstall (Nuclear Option)${NC}"
-    echo "8) Exit"
+    echo "5) Setup Nginx & Auto SSL (Certbot)"
+    echo "6) Setup Nginx & Manual SSL (Custom Certs)"
+    echo -e "${YELLOW}7) Show Credentials & Info${NC}"
+    echo -e "${RED}8) Full Uninstall (Nuclear Option)${NC}"
+    echo "9) Exit"
     
     opt=$(ask "Choose an option: ")
 
@@ -84,16 +85,71 @@ EOF
                 sudo systemctl restart nginx
                 sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
                 echo -e "DOMAIN=$DOMAIN" >> $CONF_FILE
-                echo -e "${GREEN}[✔] SSL & Nginx Ready.${NC}"
+                echo -e "${GREEN}[✔] Auto SSL & Nginx Ready.${NC}"
             fi ;;
         6)
+            DOMAIN=$(ask "Enter domain: ")
+            [ -z "$DOMAIN" ] && continue
+            
+            CERT_PATH=$(ask "Enter full path to SSL Certificate (e.g., /root/cert.crt): ")
+            KEY_PATH=$(ask "Enter full path to SSL Private Key (e.g., /root/private.key): ")
+
+            if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
+                echo -e "${RED}[!] Certificate or Key file not found! Please check the paths and try again.${NC}"
+                continue
+            fi
+
+            sudo apt update && sudo apt install nginx -y
+            PORT=$(grep "PORT=" $CONF_FILE | cut -d'=' -f2 | tr -d '\r')
+            [ -z "$PORT" ] && PORT=5000
+
+            sudo tee /etc/nginx/sites-available/$DOMAIN > /dev/null <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    # Redirect HTTP to HTTPS
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    ssl_certificate $CERT_PATH;
+    ssl_certificate_key $KEY_PATH;
+
+    # Basic SSL settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://127.0.0.1:$PORT;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        client_max_body_size 10G;
+    }
+}
+EOF
+            sudo rm -f /etc/nginx/sites-enabled/default
+            sudo ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
+            
+            if sudo nginx -t; then
+                sudo systemctl restart nginx
+                echo -e "DOMAIN=$DOMAIN" >> $CONF_FILE
+                echo -e "${GREEN}[✔] Custom Manual SSL & Nginx Ready.${NC}"
+            else
+                echo -e "${RED}[!] Nginx configuration test failed. Please check your certificate files.${NC}"
+            fi ;;
+        7)
             echo -e "\n${YELLOW}--- Current Configurations ---${NC}"
             if [ -f "$CONF_FILE" ]; then
                 cat "$CONF_FILE"
             else
                 echo "No configuration found. Run Setup first."
             fi ;;
-        7)
+        8)
             confirm=$(ask "ARE YOU SURE? This will delete EVERYTHING (y/n): ")
             if [ "$confirm" == "y" ]; then
                 echo "Stopping and removing service..."
@@ -116,7 +172,7 @@ EOF
                 echo -e "${RED}Uninstall complete. Bye!${NC}"
                 exit 0
             fi ;;
-        8) exit 0 ;;
+        9) exit 0 ;;
         *) [ -n "$opt" ] && echo "Invalid: $opt" ;;
     esac
 done
