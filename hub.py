@@ -105,6 +105,20 @@ COMMON_STYLE = """
         --accent-glow: rgba(239, 68, 68, 0.4);
         --accent-text: #ffffff;
     }}
+    
+    [data-theme="pure-black"] {{
+        --bg-dark: #000000; 
+        --bg-gradient: none;
+        --glass-bg: #000000;
+        --glass-border: #333333;
+        --glass-shadow: none;
+        --accent: #ffffff;
+        --accent-glow: rgba(255, 255, 255, 0.1);
+        --accent-text: #000000;
+        --text-main: #e5e5e5;
+        --text-muted: #737373;
+        --input-bg: #000000;
+    }}
 
     [data-theme="light"] {{
         --bg-dark: #f8fafc; 
@@ -163,45 +177,51 @@ UI_HTML = """
     </script>
     <style>
         """ + COMMON_STYLE + """
-        .header {{ background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); }}
+        .header {{ background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }}
         .logo {{ font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }}
-        .badge {{ border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; }}
+        .header-controls {{ display: flex; align-items: center; gap: 15px; }}
         
-        .theme-select {{ background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; }}
+        .badge {{ border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }}
+        
+        .theme-select {{ background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; max-width: 140px; }}
         .theme-select option {{ background: var(--bg-dark); color: var(--text-main); }}
         
-        .logout-link {{ color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; }}
+        .logout-link {{ color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }}
         .logout-link:hover {{ background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }}
         
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 30px 25px; }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }}
         
         .search-box {{ width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: 'Inter'; }}
         .search-box:focus {{ outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }}
         
-        .nav-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
-        .breadcrumbs {{ font-size: 14px; color: var(--text-muted); font-weight: 500; }}
+        .nav-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }}
+        .breadcrumbs {{ font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }}
         .breadcrumbs a {{ color: var(--text-main); text-decoration: none; transition: 0.2s; }}
         .breadcrumbs a:hover {{ color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }}
         
+        .nav-buttons {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+        
         .file-list {{ }} 
-        .file-item {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; }}
+        .file-item {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }}
         .file-item:first-child {{ border-top-left-radius: 16px; border-top-right-radius: 16px; }}
         .file-item:last-child {{ border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }}
-        .file-item:hover {{ background: var(--glass-border); transform: translateX(4px); border-left: 2px solid var(--accent); z-index: 50; }}
+        .file-item:hover {{ background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }}
         
-        .file-info {{ display: flex; align-items: center; gap: 15px; flex: 2; min-width: 0; }}
-        .file-meta {{ flex: 1; display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; margin-right: 30px; font-weight: 400; }}
-        .file-name {{ font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: 0.2s; }}
+        .file-info {{ display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }}
+        .file-meta {{ display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }}
+        .file-name {{ font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }}
         .file-name:hover {{ color: var(--accent); }}
         
+        .actions {{ display: flex; align-items: center; gap: 12px; }}
+        
         /* Glass Buttons */
-        .btn {{ padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); }}
+        .btn {{ padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); white-space: nowrap; }}
         .btn:hover {{ background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }}
         
         .btn-action {{ background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }}
         .btn-action:hover {{ background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }}
         
-        .kebab-btn {{ background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }}
+        .kebab-btn {{ background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }}
         .kebab-btn:hover {{ background: var(--glass-border); }}
         
         /* Dropdown Menu */
@@ -217,38 +237,57 @@ UI_HTML = """
         
         /* Modals */
         .modal {{ display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }}
-        .modal-content {{ width: 90%; height: 85%; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }}
+        .modal-content {{ width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }}
         @keyframes scaleIn {{ from {{ transform: scale(0.9); opacity: 0; }} to {{ transform: scale(1); opacity: 1; }} }}
-        .modal-close {{ position: absolute; top: -50px; right: 0; color: #fff; font-size: 40px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }}
+        .modal-close {{ position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }}
         .modal-close:hover {{ opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }}
         
-        .tree-item {{ padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; }}
+        .tree-item {{ padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }}
         .tree-item:hover {{ background: var(--glass-border); color: var(--text-main); }}
         .tree-item.selected {{ background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }}
         
         iframe, video, img {{ border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }}
-        @media (max-width: 768px) {{ .file-meta {{ display: none; }} }}
+        
+        /* --- Mobile Responsiveness --- */
+        @media (max-width: 768px) {{
+            .header {{ flex-direction: column; padding: 15px; gap: 15px; }}
+            .header-controls {{ width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
+            .container {{ padding: 15px 12px; }}
+            .file-meta {{ display: none; }} /* Hide dates and sizes on small screens */
+            .file-item {{ padding: 12px 15px; flex-wrap: wrap; }}
+            .actions {{ width: auto; justify-content: flex-end; }}
+            .file-info {{ width: 100%; margin-bottom: 5px; }}
+            .dropdown-content {{ right: 15px; top: 50px; }}
+            .nav-row {{ flex-direction: column; align-items: stretch; }}
+            .nav-buttons {{ justify-content: flex-start; }}
+            .btn {{ padding: 8px 12px; font-size: 12px; }}
+            .search-box {{ padding: 12px 15px; margin-bottom: 15px; }}
+            .modal-content {{ width: 95%; height: 90%; }}
+        }}
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">{site_name}</div>
-        <div style="display:flex; align-items:center; gap:15px;">
+        <div class="header-controls">
             <select id="themeSelector" class="theme-select" onchange="changeTheme(this.value)">
                 <option value="black-white">⚫⚪ Black & White</option>
                 <option value="black-blue">⚫🔵 Black & Blue</option>
                 <option value="black-red">⚫🔴 Black & Red</option>
+                <option value="pure-black">⚫⚫ Pure Black</option>
                 <option value="light">⚪⚫ Light Mode</option>
             </select>
-            <span class="badge">{role}</span>
-            <a href="/logout" class="logout-link">Logout</a>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="badge">{role}</span>
+                <a href="/logout" class="logout-link">Logout</a>
+            </div>
         </div>
     </div>
     <div class="container">
         <input type="text" id="search" class="search-box glass-box" placeholder="🔍 Search files..." onkeyup="doSearch()">
         <div class="nav-row">
             <div class="breadcrumbs">{breadcrumbs}</div>
-            <div style="display:flex; gap:12px;">
+            <div class="nav-buttons">
                 {admin_log_btn}
                 {admin_top_btn}
             </div>
@@ -260,7 +299,7 @@ UI_HTML = """
     <div id="previewModal" class="modal"><div class="modal-content"><span class="modal-close" onclick="closePreview()">&times;</span><div id="previewBody" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;"></div></div></div>
     
     <div id="treeModal" class="modal">
-        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:90%; max-width:500px; height:75%;">
+        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:90%; max-width:500px; height:75%; box-sizing:border-box;">
             <h3 id="tree-title" style="margin:0 0 20px 0; color:var(--text-main); font-weight:600; font-size:18px; border-bottom:1px solid var(--glass-border); padding-bottom:15px; width:100%;">Select Destination</h3>
             <div id="tree-list" style="flex:1; width:100%; overflow-y:auto; background:var(--input-bg); border:1px solid var(--glass-border); border-radius:12px; padding:15px; box-sizing:border-box;"></div>
             <div style="margin-top:20px; display:flex; gap:12px; width:100%; justify-content:flex-end;">
@@ -271,8 +310,8 @@ UI_HTML = """
     </div>
 
     <div id="logModal" class="modal">
-        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:85%; height:85%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:20px; border-bottom:1px solid var(--glass-border); padding-bottom:15px;">
+        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:90%; max-width:800px; height:85%; box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:20px; border-bottom:1px solid var(--glass-border); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h3 style="margin:0; color:var(--text-main); font-weight:600;">System Access Logs</h3>
                 <div style="display:flex; gap:12px;">
                     <a href="/download_logs" class="btn">📥 Download TXT</a>
@@ -287,8 +326,8 @@ UI_HTML = """
     </div>
 
     <div id="editModal" class="modal">
-        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:85%; height:85%;">
-            <h3 id="edit-name" style="margin:0 0 20px 0; color:var(--text-main); font-weight:600; border-bottom:1px solid var(--glass-border); padding-bottom:15px; width:100%;"></h3>
+        <div class="modal-content glass-box" style="flex-direction:column; padding:25px; width:90%; max-width:800px; height:85%; box-sizing:border-box;">
+            <h3 id="edit-name" style="margin:0 0 20px 0; color:var(--text-main); font-weight:600; border-bottom:1px solid var(--glass-border); padding-bottom:15px; width:100%; word-break:break-all;"></h3>
             <textarea id="edit-box" style="width:100%; height:100%; background:rgba(0,0,0,0.8); color:#f8fafc; border:1px solid var(--neon-orange); padding:20px; font-family:monospace; font-size:14px; resize:none; border-radius:12px; outline:none; box-sizing:border-box; box-shadow:inset 0 0 20px rgba(0,0,0,0.8);"></textarea>
             <div style="margin-top:20px; display:flex; gap:12px; width:100%; justify-content:flex-end;">
                 <button class="btn" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
@@ -301,7 +340,9 @@ UI_HTML = """
         const currentDir = "{current_dir}";
         
         // Setup Theme
-        document.getElementById('themeSelector').value = savedTheme;
+        const themeSelector = document.getElementById('themeSelector');
+        if(themeSelector) themeSelector.value = savedTheme;
+        
         function changeTheme(theme) {{
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('hub_theme', theme);
@@ -458,13 +499,14 @@ LOGIN_HTML = """
         @keyframes gradientBG {{ 0% {{background-position: 0% 50%;}} 50% {{background-position: 100% 50%;}} 100% {{background-position: 0% 50%;}} }}
         
         .login-card {{ 
-            padding: 40px; width: 340px; text-align: center; 
+            padding: 40px; width: 90%; max-width: 340px; text-align: center; 
             background: rgba(20, 20, 20, 0.6);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255,255,255,0.1);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
             border-radius: 20px;
             position: relative; overflow: hidden;
+            box-sizing: border-box;
         }}
         
         .login-card::before {{
@@ -474,7 +516,7 @@ LOGIN_HTML = """
         }}
         @keyframes pulse {{ 0% {{transform: scale(0.8);}} 100% {{transform: scale(1.2);}} }}
 
-        h2 {{ color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); }}
+        h2 {{ color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); word-break: break-word; }}
         
         input {{ 
             width: 100%; padding: 16px; margin: 0 0 25px 0; 
@@ -547,7 +589,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         if check_ip(self.client_address[0]):
-            self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;"><div class="glass-box" style="padding:40px;text-align:center;border-color:var(--neon-red);box-shadow:0 0 30px var(--neon-red-glow);"><h1 style="color:var(--neon-red);margin:0;font-weight:800;letter-spacing:2px;">🚫 ACCESS DENIED</h1><p style="color:var(--text-muted);margin-top:15px;font-size:15px;">Your IP has been temporarily blocked for 24 hours.</p></div></body>')
+            self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;margin:0;padding:20px;box-sizing:border-box;"><div class="glass-box" style="padding:40px;text-align:center;border-color:var(--neon-red);box-shadow:0 0 30px var(--neon-red-glow);max-width:400px;width:100%;"><h1 style="color:var(--neon-red);margin:0;font-weight:800;letter-spacing:2px;word-break:break-word;">🚫 ACCESS DENIED</h1><p style="color:var(--text-muted);margin-top:15px;font-size:15px;">Your IP has been temporarily blocked for 24 hours.</p></div></body>')
             return
 
         parsed = urllib.parse.urlparse(self.path)
@@ -564,7 +606,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 if pwd:
                     req_pwd = urllib.parse.parse_qs(parsed.query).get('pwd', [''])[0]
                     if req_pwd != pwd:
-                        self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;"><script>let p=prompt("Secure Link - Password Required:");if(p)window.location.href="?pwd="+p;else document.body.innerHTML="<div class=\'glass-box\' style=\'padding:30px;color:var(--neon-red);\'>Access Denied</div>";</script></body>')
+                        self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;"><script>let p=prompt("Secure Link - Password Required:");if(p)window.location.href="?pwd="+p;else document.body.innerHTML="<div class=\'glass-box\' style=\'padding:30px;color:var(--neon-red);\'>Access Denied</div>";</script></body>')
                         return
                 target = self.get_safe_path(target_rel)
                 if os.path.isfile(target):
@@ -625,7 +667,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 add_log(self.client_address[0], "Login Successful")
                 tk = hashlib.sha256(pwd.encode()).hexdigest(); self.send_response(302); self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
             else: 
-                # خواندن محدودیت از فایل تنظیمات و ارسال به تابع
                 max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
                 rec_fail(self.client_address[0], max_fails)
                 self.send_error(401)
@@ -705,7 +746,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
     def _serve_ui(self, role, curr, req_dir):
         pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
         for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="document.getElementById(\'logModal\').style.display=\'flex\'">📜 System Logs</button>' if role == 'admin' else ''
         up_area = '<div class="glass-box" id="drop-zone" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to upload</p><input type="file" id="file-input" hidden multiple><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
         lns = load_json(LINKS_FILE); locks = load_json(LOCKS_FILE); log_content = ""
@@ -722,13 +763,13 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             size = format_size(stat.st_size) if not is_d else "--"; date = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
             
             lock_id = hashlib.md5(rel.encode()).hexdigest() if rel in locks else ""
-            lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow);">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
+            lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
             
             if is_d:
                 nx = f"{req_dir}/{f}".strip('/')
                 dl_zip_click = f"handleItemClick('/zip/{nx}', 'download', '{lock_id}')"
                 admin_h = f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button><button class="action-orange" onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f}\')">🗑️ Delete</button>' if role == 'admin' else f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button>'
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px; flex-shrink:0;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
             else:
                 p_type = get_preview_type(f); dl = urllib.parse.quote(f"/{req_dir}/{f}".replace('//', '/'))
                 p_type_str = p_type if p_type else 'download'
@@ -739,7 +780,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 for tk, data in lns.items():
                     if (data.get('target') if isinstance(data, dict) else data) == rel:
                         pwd_hint = f" (Pass: {data.get('pwd')})" if isinstance(data, dict) and data.get('pwd') else ""
-                        share_badge = f'<span style="color:var(--neon-red); font-size:10px; margin-left:8px; text-shadow:0 0 8px var(--neon-red-glow);">● Shared{pwd_hint if role == "admin" else ""}</span>'
+                        share_badge = f'<span style="color:var(--neon-red); font-size:10px; margin-left:8px; text-shadow:0 0 8px var(--neon-red-glow); white-space:nowrap;">● Shared{pwd_hint if role == "admin" else ""}</span>'
                         view_link_btn = f'<button class="action-accent" onclick="viewLink(\'{tk}\')">👁️ View Link</button>'
                         break
                         
@@ -754,7 +795,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     
                 dl_btn = f'<button onclick="handleItemClick(\'/download{dl}\', \'download\', \'{lock_id}\')" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</button>'
                 
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions" style="display:flex; align-items:center; gap:12px;">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
         
         self._send_resp(UI_HTML.format(site_name=self.CONFIG['SITE_NAME'], role=role.capitalize(), breadcrumbs=bc, admin_top_btn=admin_btn, admin_log_btn=admin_log_btn, admin_upload_area=up_area, file_rows=rows, current_dir=req_dir, log_data=log_content))
 
@@ -795,7 +836,6 @@ def main():
         gp = input("Guest Password [1234]: ") or "1234"
         pt = input("Port [5000]: ") or "5000"
         sd = input("Storage Path [./uploads]: ") or "./uploads"
-        # اینجا عدد رو برای جلوگیری از بلاک شدن از شما میگیره
         mf = input("Max Failed Logins before Ban [15]: ") or "15"
         with open(CONFIG_FILE, "w", encoding="utf-8") as f: 
             f.write(f"SITE_NAME={sn}\nADMIN_PWD={ap}\nGUEST_PWD={gp}\nPORT={pt}\nUPLOAD_DIR={sd}\nMAX_FAILS={mf}\n")
