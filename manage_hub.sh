@@ -16,7 +16,8 @@ NC='\033[0m'
 
 ask() {
     echo -n -e "${CYAN}$1${NC}" >&2
-    read -r res < /dev/tty
+    # اضافه شدن فلگ -e برای پشتیبانی از Backspace و کلیدهای جهت‌نما
+    read -e -r res < /dev/tty
     echo "$res" | tr -d '\r\n '
 }
 
