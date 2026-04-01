@@ -4,8 +4,13 @@
 APP_NAME="black-hub"
 PY_SCRIPT="hub.py"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
-WORKING_DIR=$(pwd)
+WORKING_DIR="/opt/black-hub"
 CONF_FILE="fileserver.conf"
+REPO_URL="https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main"
+
+# انتقال خودکار به پوشه نصب
+mkdir -p "$WORKING_DIR"
+cd "$WORKING_DIR" || exit 1
 
 # --- Colors ---
 GREEN='\033[0;32m'
@@ -16,51 +21,106 @@ NC='\033[0m'
 
 ask() {
     echo -n -e "${CYAN}$1${NC}" >&2
-    # اضافه شدن فلگ -e برای پشتیبانی از Backspace و کلیدهای جهت‌نما
     read -e -r res < /dev/tty
     echo "$res" | tr -d '\r\n '
 }
 
-# ایجاد میانبر سیستم (self-hub command)
-if [ ! -f "/usr/local/bin/self-hub" ]; then
-    sudo ln -sf "$WORKING_DIR/manage_hub.sh" /usr/local/bin/self-hub
-    sudo chmod +x /usr/local/bin/self-hub
+# ساخت میانبر در صورتی که کاربری بدون install.sh این فایل رو اجرا کرد
+if [ ! -f "/usr/local/bin/black-hub" ]; then
+    sudo ln -sf "$WORKING_DIR/manage_hub.sh" /usr/local/bin/black-hub
+    sudo chmod +x /usr/local/bin/black-hub
 fi
 
-while true; do
-    echo -e "\n${CYAN}--- $APP_NAME Management Tool ---${NC}"
-    echo "1) Initial Setup"
-    echo "2) Run Hub Manually (Debug)"
-    echo "3) Install/Restart Service"
-    echo "4) Stop Service"
-    echo "5) Setup Nginx & Auto SSL (Certbot)"
-    echo "6) Setup Nginx & Manual SSL (Custom Certs)"
-    echo -e "${YELLOW}7) Show Credentials & Info${NC}"
-    echo -e "${RED}8) Full Uninstall (Nuclear Option)${NC}"
-    echo "9) Exit"
+show_menu() {
+    clear
+    echo -e "${GREEN}=========================================${NC}"
+    echo -e "${GREEN}       Black Hub Management Panel        ${NC}"
+    echo -e "${GREEN}=========================================${NC}"
     
-    opt=$(ask "Choose an option: ")
+    if systemctl is-active --quiet $APP_NAME; then
+        echo -e "Service Status: ${GREEN}▶ Running${NC}"
+    else
+        echo -e "Service Status: ${RED}🛑 Stopped${NC}"
+    fi
+    echo -e "-----------------------------------------"
+    
+    echo -e " ${YELLOW}1)${NC} 🚀 Initial Setup (Install & Config)"
+    echo -e " ${YELLOW}2)${NC} 🔄 Update Panel (Fetch Latest Version)"
+    echo -e " ${YELLOW}3)${NC} ▶️  Start Service"
+    echo -e " ${YELLOW}4)${NC} 🛑 Stop Service"
+    echo -e " ${YELLOW}5)${NC} ♻️  Restart Service"
+    echo -e " ${YELLOW}6)${NC} 🛠️  Run Manually (Debug Mode)"
+    echo -e " ${YELLOW}7)${NC} 🔐 Setup Nginx & Auto SSL (Certbot)"
+    echo -e " ${YELLOW}8)${NC} 🔐 Setup Nginx & Manual SSL"
+    echo -e " ${YELLOW}9)${NC} 🔑 Show Credentials & Info"
+    echo -e "${RED}10)${NC} 🗑️  Full Uninstall (Nuclear Option)"
+    echo -e "  ${RED}0)${NC} ❌ Exit"
+    echo -e "-----------------------------------------"
+}
+
+while true; do
+    show_menu
+    opt=$(ask "Choose an option (0-10): ")
 
     case "$opt" in
-        1) sudo apt update && sudo apt install python3 python3-pip -y ; python3 "$PY_SCRIPT" setup ;;
-        2) python3 "$PY_SCRIPT" run ;;
-        3)
+        1) 
+            sudo apt update && sudo apt install python3 python3-pip -y
+            python3 "$PY_SCRIPT" setup
+            
             sudo tee $SERVICE_FILE > /dev/null <<EOF
 [Unit]
-Description=Black Hub
+Description=Black Hub Web Server
 After=network.target
+
 [Service]
-User=$USER
+User=root
 WorkingDirectory=$WORKING_DIR
 ExecStart=/usr/bin/python3 $WORKING_DIR/$PY_SCRIPT run
 Restart=always
+
 [Install]
 WantedBy=multi-user.target
 EOF
-            sudo systemctl daemon-reload && sudo systemctl enable $APP_NAME && sudo systemctl restart $APP_NAME
-            echo -e "${GREEN}[✔] Service Started.${NC}" ;;
-        4) sudo systemctl stop $APP_NAME ; echo "Stopped." ;;
-        5)
+            sudo systemctl daemon-reload
+            sudo systemctl enable $APP_NAME
+            sudo systemctl restart $APP_NAME
+            echo -e "${GREEN}[✔] Setup Complete and Service Started!${NC}"
+            sleep 2
+            ;;
+        2)
+            echo -e "${CYAN}Updating Black Hub to the latest version from GitHub...${NC}"
+            sudo curl -sL "$REPO_URL/hub.py" | tr -d '\r' | sudo tee "$WORKING_DIR/hub.py" > /dev/null
+            sudo curl -sL "$REPO_URL/manage_hub.sh" | tr -d '\r' | sudo tee "$WORKING_DIR/manage_hub.sh" > /dev/null
+            sudo chmod +x "$WORKING_DIR/manage_hub.sh"
+            
+            if systemctl is-active --quiet $APP_NAME; then
+                sudo systemctl restart $APP_NAME
+            fi
+            echo -e "${GREEN}[✔] Update Complete!${NC}"
+            sleep 2
+            exec black-hub 
+            ;;
+        3) 
+            sudo systemctl start $APP_NAME
+            echo -e "${GREEN}[✔] Service Started.${NC}"
+            sleep 1
+            ;;
+        4) 
+            sudo systemctl stop $APP_NAME
+            echo -e "${RED}[✔] Service Stopped.${NC}"
+            sleep 1
+            ;;
+        5) 
+            sudo systemctl restart $APP_NAME
+            echo -e "${GREEN}[✔] Service Restarted.${NC}"
+            sleep 1
+            ;;
+        6) 
+            sudo systemctl stop $APP_NAME
+            echo -e "${YELLOW}Running in debug mode. Press Ctrl+C to stop and return to menu.${NC}"
+            python3 "$PY_SCRIPT" run 
+            ;;
+        7)
             DOMAIN=$(ask "Enter domain: ")
             [ -z "$DOMAIN" ] && continue
             sudo apt update && sudo apt install nginx certbot python3-certbot-nginx -y
@@ -87,8 +147,10 @@ EOF
                 sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
                 echo -e "DOMAIN=$DOMAIN" >> $CONF_FILE
                 echo -e "${GREEN}[✔] Auto SSL & Nginx Ready.${NC}"
-            fi ;;
-        6)
+            fi
+            sleep 2
+            ;;
+        8)
             DOMAIN=$(ask "Enter domain: ")
             [ -z "$DOMAIN" ] && continue
             
@@ -96,7 +158,8 @@ EOF
             KEY_PATH=$(ask "Enter full path to SSL Private Key (e.g., /root/private.key): ")
 
             if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
-                echo -e "${RED}[!] Certificate or Key file not found! Please check the paths and try again.${NC}"
+                echo -e "${RED}[!] Certificate or Key file not found!${NC}"
+                sleep 2
                 continue
             fi
 
@@ -108,7 +171,6 @@ EOF
 server {
     listen 80;
     server_name $DOMAIN;
-    # Redirect HTTP to HTTPS
     return 301 https://\$host\$request_uri;
 }
 
@@ -119,7 +181,6 @@ server {
     ssl_certificate $CERT_PATH;
     ssl_certificate_key $KEY_PATH;
 
-    # Basic SSL settings
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
@@ -141,16 +202,20 @@ EOF
                 echo -e "DOMAIN=$DOMAIN" >> $CONF_FILE
                 echo -e "${GREEN}[✔] Custom Manual SSL & Nginx Ready.${NC}"
             else
-                echo -e "${RED}[!] Nginx configuration test failed. Please check your certificate files.${NC}"
-            fi ;;
-        7)
+                echo -e "${RED}[!] Nginx configuration test failed.${NC}"
+            fi
+            sleep 2
+            ;;
+        9)
             echo -e "\n${YELLOW}--- Current Configurations ---${NC}"
             if [ -f "$CONF_FILE" ]; then
                 cat "$CONF_FILE"
             else
                 echo "No configuration found. Run Setup first."
-            fi ;;
-        8)
+            fi
+            ask "Press Enter to return to menu..."
+            ;;
+        10)
             confirm=$(ask "ARE YOU SURE? This will delete EVERYTHING (y/n): ")
             if [ "$confirm" == "y" ]; then
                 echo "Stopping and removing service..."
@@ -160,20 +225,28 @@ EOF
                 sudo systemctl daemon-reload
                 
                 echo "Removing Nginx configs..."
-                D_NAME=$(grep "DOMAIN=" $CONF_FILE | cut -d'=' -f2)
-                if [ -n "$D_NAME" ]; then
-                    sudo rm -f /etc/nginx/sites-enabled/$D_NAME
-                    sudo rm -f /etc/nginx/sites-available/$D_NAME
-                    sudo systemctl restart nginx
+                if [ -f "$CONF_FILE" ]; then
+                    D_NAME=$(grep "DOMAIN=" $CONF_FILE | cut -d'=' -f2 | tr -d '\r')
+                    if [ -n "$D_NAME" ]; then
+                        sudo rm -f /etc/nginx/sites-enabled/$D_NAME
+                        sudo rm -f /etc/nginx/sites-available/$D_NAME
+                        sudo systemctl restart nginx
+                    fi
                 fi
 
-                echo "Deleting files..."
-                rm -f hub.py manage_hub.sh install.sh $CONF_FILE
+                echo "Deleting files and commands..."
+                # خروج از پوشه برای جلوگیری از خطای پاک کردن پوشه در حال استفاده
+                cd /tmp || exit
+                
+                sudo rm -rf "$WORKING_DIR"
+                sudo rm -f /usr/local/bin/black-hub
                 sudo rm -f /usr/local/bin/self-hub
-                echo -e "${RED}Uninstall complete. Bye!${NC}"
+                
+                echo -e "${RED}Uninstall complete. The 'black-hub' command has been removed. Bye!${NC}"
                 exit 0
-            fi ;;
-        9) exit 0 ;;
-        *) [ -n "$opt" ] && echo "Invalid: $opt" ;;
+            fi 
+            ;;
+        0) clear; exit 0 ;;
+        *) echo -e "${RED}Invalid option!${NC}"; sleep 1 ;;
     esac
 done
