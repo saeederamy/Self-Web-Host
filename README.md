@@ -3,7 +3,7 @@
 
 A powerful, highly secure, and visually stunning web-based file manager designed for seamless deployment on both Linux and Windows servers. **Black Hub** turns your server into a personal cloud storage with advanced sharing and security features, wrapped in a beautiful, modern interface.
 
-![Black Hub Preview](https://via.placeholder.com/1000x500.png?text=Shiny+Glass+UI+Preview) *(Note: Replace this link with an actual screenshot of your panel)*
+
 
 ---
 
