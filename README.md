@@ -1,42 +1,42 @@
 # 🛡️ BLACK HUB - Advanced Personal File Server
 
-A lightweight, powerful, and standalone web-based file manager written in Python. Manage, share, and edit your files from anywhere with a modern Glassmorphism UI.
+
+A powerful, highly secure, and visually stunning web-based file manager designed for seamless deployment on both Linux and Windows servers. **Black Hub** turns your server into a personal cloud storage with advanced sharing and security features, wrapped in a beautiful, modern interface.
+
+![Black Hub Preview](https://via.placeholder.com/1000x500.png?text=Shiny+Glass+UI+Preview) *(Note: Replace this link with an actual screenshot of your panel)*
 
 ---
 
-## ✨ Features (ویژگی‌ها)
+## ✨ Key Features
 
-### 📂 File Management
-* **Web-Based Interface:** Access and manage files via any browser.
-* **Drag & Drop Upload:** Upload multiple files with a real-time progress bar.
-* **On-the-fly ZIP:** Download entire folders as a ZIP archive with one click.
-* **File Operations:** Copy, Move, Rename, and Delete files/folders easily.
+### 🎨 Stunning Web UI (Shiny Glass)
+- Completely redesigned UI featuring a modern **Glassmorphism** aesthetic.
+- **5 Selectable Themes:** Dark, Light, Black & Blue, Black & Red, and an OLED-friendly **Pure Black** theme.
+- Fully responsive design that works flawlessly on Desktop, Tablets, and Mobile devices.
 
-### 🔐 Security & Access
-* **Role-Based Access:** Separate passwords for **Admin** (Full control) and **Guest** (View/Download only).
-* **Folder Locking:** Protect specific directories with unique passwords.
-* **Access Logs:** Track all activities and IP addresses (Last 100 entries).
+### 🗂️ Advanced File Management
+- **Drag & Drop Uploads** with real-time progress bars.
+- Create folders, create text files, rename, copy, move, and delete items easily.
+- **Built-in Text Editor:** Edit code (Python, HTML, JS, JSON) or text files directly inside the browser.
+- **Bulk Download:** Compress and download entire folders as a `.zip` file with a single click.
+- In-browser preview for images, videos, audio, and PDF files.
 
-### 🔗 Smart Sharing
-* **Public Links:** Generate shareable links for any file.
-* **Download Limits:** Set a maximum number of allowed downloads per link.
-* **Password Protected Links:** Add an extra layer of security to shared files.
+### 🔗 Smart File Sharing
+- **Public Links:** Generate instant sharing links for any file.
+- **Limited Links:** Set a maximum download limit (e.g., expires after 3 downloads).
+- **Secure Links:** Protect your shared files with a custom password.
 
-### 🖥️ Multimedia & Editing
-* **In-Browser Preview:** View Images, PDFs, and play Videos/Audio directly in the browser.
-* **Live Code Editor:** Edit text-based files (`.py`, `.js`, `.html`, `.txt`, etc.) without downloading.
+### 🔒 Enterprise-Grade Security
+- Dual access levels: **Admin** (full control) and **Guest** (view and download only).
+- **Item Locking:** Lock specific files or folders with unique passwords to prevent unauthorized access.
+- **Anti Brute-Force System:** Automatically bans IP addresses for 24 hours after a set number of failed login attempts.
+- **Live System Logs:** View access logs, IP activities, and system events directly from the Web UI.
 
 ---
 
-## 🚀 Quick Start (راهنمای نصب سریع)
+## 🐧 Linux Installation (Ubuntu/Debian)
 
-### 1. Requirements
-* Python 3.x
-* No external libraries needed! (Standard Library only)
-
-### 2. Installation
-Download the script and run the setup:
-
+Deploy Black Hub on your Linux server in seconds using our automated installation script:
 
 ```bash
 bash <(curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r')
