@@ -5,6 +5,7 @@ LINKS_FILE = "public_links.json"
 LOCKS_FILE = "folder_locks.json" 
 LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
+NODL_FILE = "no_download.json"
 
 def load_json(path):
     if os.path.exists(path):
@@ -68,8 +69,7 @@ def is_in_locked_path(target_rel, l_path):
 COMMON_STYLE = """
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
     
-    :root {{
-        /* Default Theme: Black & White */
+    :root {
         --bg-dark: #0a0a0a; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #1f1f1f 0%, #0a0a0a 70%);
         --glass-bg: rgba(255, 255, 255, 0.03);
@@ -88,25 +88,25 @@ COMMON_STYLE = """
         --text-main: #f8fafc;
         --text-muted: #94a3b8;
         --input-bg: rgba(0,0,0,0.4);
-    }}
+    }
 
-    [data-theme="black-blue"] {{
+    [data-theme="black-blue"] {
         --bg-dark: #0a0a0f; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0f 70%);
         --accent: #3b82f6;
         --accent-glow: rgba(59, 130, 246, 0.4);
         --accent-text: #ffffff;
-    }}
+    }
 
-    [data-theme="black-red"] {{
+    [data-theme="black-red"] {
         --bg-dark: #0f0000; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #2a0808 0%, #0f0000 70%);
         --accent: #ef4444;
         --accent-glow: rgba(239, 68, 68, 0.4);
         --accent-text: #ffffff;
-    }}
+    }
     
-    [data-theme="pure-black"] {{
+    [data-theme="pure-black"] {
         --bg-dark: #000000; 
         --bg-gradient: none;
         --glass-bg: #000000;
@@ -118,9 +118,9 @@ COMMON_STYLE = """
         --text-main: #e5e5e5;
         --text-muted: #737373;
         --input-bg: #000000;
-    }}
+    }
 
-    [data-theme="light"] {{
+    [data-theme="light"] {
         --bg-dark: #f8fafc; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 100%);
         --glass-bg: rgba(255, 255, 255, 0.6);
@@ -134,9 +134,9 @@ COMMON_STYLE = """
         --text-main: #0f172a;
         --text-muted: #475569;
         --input-bg: rgba(255,255,255,0.8);
-    }}
+    }
     
-    body {{ 
+    body { 
         font-family: 'Inter', system-ui, sans-serif; 
         background: var(--bg-dark); 
         background-image: var(--bg-gradient);
@@ -145,9 +145,9 @@ COMMON_STYLE = """
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
         transition: background 0.3s ease, color 0.3s ease;
-    }}
+    }
     
-    .glass-box {{ 
+    .glass-box { 
         background: var(--glass-bg); 
         backdrop-filter: blur(16px); 
         -webkit-backdrop-filter: blur(16px);
@@ -155,12 +155,12 @@ COMMON_STYLE = """
         border-radius: 16px; 
         box-shadow: var(--glass-shadow);
         transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
-    }}
+    }
     
-    ::-webkit-scrollbar {{ width: 8px; height: 8px; }}
-    ::-webkit-scrollbar-track {{ background: rgba(0,0,0,0.1); border-radius: 10px; }}
-    ::-webkit-scrollbar-thumb {{ background: var(--glass-border); border-radius: 10px; }}
-    ::-webkit-scrollbar-thumb:hover {{ background: var(--accent); }}
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 """
 
 UI_HTML = """
@@ -175,93 +175,89 @@ UI_HTML = """
     </script>
     <style>
         """ + COMMON_STYLE + """
-        .header {{ background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }}
-        .logo {{ font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }}
-        .header-controls {{ display: flex; align-items: center; gap: 15px; }}
+        .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+        .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
+        .header-controls { display: flex; align-items: center; gap: 15px; }
         
-        .badge {{ border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }}
+        .badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
         
-        .theme-select {{ background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; max-width: 140px; }}
-        .theme-select option {{ background: var(--bg-dark); color: var(--text-main); }}
+        .theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; max-width: 140px; }
+        .theme-select option { background: var(--bg-dark); color: var(--text-main); }
         
-        .logout-link {{ color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }}
-        .logout-link:hover {{ background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }}
+        .logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
+        .logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
         
-        .container {{ max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }}
+        .container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
         
-        .search-box {{ width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: 'Inter'; }}
-        .search-box:focus {{ outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }}
+        .search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: 'Inter'; }
+        .search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
         
-        .nav-row {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }}
-        .breadcrumbs {{ font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }}
-        .breadcrumbs a {{ color: var(--text-main); text-decoration: none; transition: 0.2s; }}
-        .breadcrumbs a:hover {{ color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }}
+        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
+        .breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
+        .breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
+        .breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
         
-        .nav-buttons {{ display: flex; gap: 12px; flex-wrap: wrap; }}
+        .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
         
-        .file-list {{ }} 
-        .file-item {{ display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }}
-        .file-item:first-child {{ border-top-left-radius: 16px; border-top-right-radius: 16px; }}
-        .file-item:last-child {{ border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }}
-        .file-item:hover {{ background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }}
+        .file-list { } 
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
+        .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+        .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
+        .file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
         
-        .file-info {{ display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }}
-        .file-meta {{ display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }}
-        .file-name {{ font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }}
-        .file-name:hover {{ color: var(--accent); }}
+        .file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
+        .file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
+        .file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
+        .file-name:hover { color: var(--accent); }
         
-        .actions {{ display: flex; align-items: center; gap: 12px; }}
+        .actions { display: flex; align-items: center; gap: 12px; }
         
-        /* Glass Buttons */
-        .btn {{ padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); white-space: nowrap; }}
-        .btn:hover {{ background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }}
+        .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); white-space: nowrap; }
+        .btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
         
-        .btn-action {{ background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }}
-        .btn-action:hover {{ background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }}
+        .btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
+        .btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
         
-        .kebab-btn {{ background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }}
-        .kebab-btn:hover {{ background: var(--glass-border); }}
+        .kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
+        .kebab-btn:hover { background: var(--glass-border); }
         
-        /* Dropdown Menu */
-        .dropdown-content {{ display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }}
-        .dropdown-content button {{ width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: 'Inter'; margin-bottom: 2px; }}
-        .dropdown-content button:hover {{ background: var(--glass-border); color: var(--text-main); padding-left: 20px; }}
-        .dropdown-content button.action-red:hover {{ background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }}
-        .dropdown-content button.action-orange:hover {{ background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }}
-        .dropdown-content button.action-accent:hover {{ background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }}
+        .dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
+        .dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: 'Inter'; margin-bottom: 2px; }
+        .dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
+        .dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
+        .dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
+        .dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
         
-        .show {{ display: block; animation: fadeIn 0.2s ease; }}
-        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(-10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        .show { display: block; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Modals */
-        .modal {{ display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }}
-        .modal-content {{ width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }}
-        @keyframes scaleIn {{ from {{ transform: scale(0.9); opacity: 0; }} to {{ transform: scale(1); opacity: 1; }} }}
-        .modal-close {{ position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }}
-        .modal-close:hover {{ opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }}
+        .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
+        .modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
+        .modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
         
-        .tree-item {{ padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }}
-        .tree-item:hover {{ background: var(--glass-border); color: var(--text-main); }}
-        .tree-item.selected {{ background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }}
+        .tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
+        .tree-item:hover { background: var(--glass-border); color: var(--text-main); }
+        .tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
         
-        iframe, video, img {{ border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }}
+        iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
         
-        /* --- Mobile Responsiveness --- */
-        @media (max-width: 768px) {{
-            .header {{ flex-direction: column; padding: 15px; gap: 15px; }}
-            .header-controls {{ width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
-            .container {{ padding: 15px 12px; }}
-            .file-meta {{ display: none; }}
-            .file-item {{ padding: 12px 15px; flex-wrap: wrap; }}
-            .actions {{ width: auto; justify-content: flex-end; }}
-            .file-info {{ width: 100%; margin-bottom: 5px; }}
-            .dropdown-content {{ right: 15px; top: 50px; }}
-            .nav-row {{ flex-direction: column; align-items: stretch; }}
-            .nav-buttons {{ justify-content: flex-start; }}
-            .btn {{ padding: 8px 12px; font-size: 12px; }}
-            .search-box {{ padding: 12px 15px; margin-bottom: 15px; }}
-            .modal-content {{ width: 95%; height: 90%; }}
-        }}
+        @media (max-width: 768px) {
+            .header { flex-direction: column; padding: 15px; gap: 15px; }
+            .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+            .container { padding: 15px 12px; }
+            .file-meta { display: none; }
+            .file-item { padding: 12px 15px; flex-wrap: wrap; }
+            .actions { width: auto; justify-content: flex-end; }
+            .file-info { width: 100%; margin-bottom: 5px; }
+            .dropdown-content { right: 15px; top: 50px; }
+            .nav-row { flex-direction: column; align-items: stretch; }
+            .nav-buttons { justify-content: flex-start; }
+            .btn { padding: 8px 12px; font-size: 12px; }
+            .search-box { padding: 12px 15px; margin-bottom: 15px; }
+            .modal-content { width: 95%; height: 90%; }
+        }
     </style>
 </head>
 <body>
@@ -290,6 +286,7 @@ UI_HTML = """
                 {admin_top_btn}
             </div>
         </div>
+        {disk_dashboard}
         {admin_upload_area}
         <div class="file-list glass-box" id="list">{file_rows}</div>
     </div>
@@ -340,144 +337,145 @@ UI_HTML = """
         const themeSelector = document.getElementById('themeSelector');
         if(themeSelector) themeSelector.value = savedTheme;
         
-        function changeTheme(theme) {{
+        function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('hub_theme', theme);
-        }}
+        }
         
-        function handleItemClick(url, type, lockId) {{
-            if (lockId) {{
+        function handleItemClick(url, type, lockId) {
+            if (lockId) {
                 document.cookie = "lock_" + lockId + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 let p = prompt("🔒 This item is Locked. Please enter password:");
-                if (p) {{ document.cookie = "lock_" + lockId + "=" + p + ";path=/"; }} 
-                else {{ return; }}
-            }}
-            if (type === 'download') {{ window.location.href = url; }} 
-            else {{ openPreview(url, type); }}
-        }}
+                if (p) { document.cookie = "lock_" + lockId + "=" + p + ";path=/"; } 
+                else { return; }
+            }
+            if (type === 'download') { window.location.href = url; } 
+            else { openPreview(url, type); }
+        }
 
-        function doSearch() {{
+        function doSearch() {
             let q = document.getElementById('search').value.toLowerCase();
-            document.querySelectorAll('.file-item').forEach(item => {{
+            document.querySelectorAll('.file-item').forEach(item => {
                 let name = item.getAttribute('data-name').toLowerCase();
                 item.style.display = (name.includes(q) || name === '..') ? 'flex' : 'none';
-            }});
-        }}
+            });
+        }
         
-        function toggleMenu(event, id) {{ 
+        function toggleMenu(event, id) { 
             event.stopPropagation();
-            document.querySelectorAll('.dropdown-content').forEach(d => {{ if(d.id !== id) d.classList.remove('show'); }}); 
+            document.querySelectorAll('.dropdown-content').forEach(d => { if(d.id !== id) d.classList.remove('show'); }); 
             document.getElementById(id).classList.toggle('show'); 
-        }}
+        }
         
-        window.onclick = (e) => {{ 
-            if (!e.target.closest('.dropdown-content') && !e.target.matches('.kebab-btn')) {{
+        window.onclick = (e) => { 
+            if (!e.target.closest('.dropdown-content') && !e.target.matches('.kebab-btn')) {
                 document.querySelectorAll('.dropdown-content').forEach(d => d.classList.remove('show')); 
-            }}
-        }}
+            }
+        }
         
-        function openPreview(url, type) {{
+        function openPreview(url, type) {
             const body = document.getElementById('previewBody'); body.innerHTML = ''; document.getElementById('previewModal').style.display = 'flex';
-            if (type === 'image') body.innerHTML = `<img src="${{url}}">`;
-            else if (type === 'video') body.innerHTML = `<video controls autoplay style="width:100%;"><source src="${{url}}"></video>`;
-            else if (type === 'audio') body.innerHTML = `<audio controls autoplay style="width:300px;"><source src="${{url}}"></audio>`;
-            else if (type === 'pdf') body.innerHTML = `<iframe src="${{url}}" style="width:100%; height:100%; background:#fff;"></iframe>`;
-            else window.location.href = url;
-        }}
-        function closePreview() {{ document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }}
+            if (type === 'image') body.innerHTML = `<img src="${url}" oncontextmenu="return false;" style="pointer-events:none;">`;
+            else if (type === 'video') body.innerHTML = `<video controls controlsList="nodownload" autoplay style="width:100%;" oncontextmenu="return false;"><source src="${url}"></video>`;
+            else if (type === 'audio') body.innerHTML = `<audio controls controlsList="nodownload" autoplay style="width:300px;" oncontextmenu="return false;"><source src="${url}"></audio>`;
+            else if (type === 'pdf') body.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; background:#fff;" oncontextmenu="return false;"></iframe>`;
+            else window.location.href = url + "&dl=1";
+        }
+        function closePreview() { document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }
         
-        function openLogs() {{
+        function openLogs() {
             document.getElementById('logModal').style.display='flex';
             document.getElementById('log-viewer').value = 'Loading...';
-            fetch('/action', {{method:'POST', body:new URLSearchParams({{action:'get_logs'}})}}).then(r=>r.text()).then(t=>document.getElementById('log-viewer').value=t);
-        }}
+            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_logs'})}).then(r=>r.text()).then(t=>document.getElementById('log-viewer').value=t);
+        }
         
         let treeAction = ''; let treeTarget = ''; let treeSelected = null;
-        function openTreeModal(act, tgt) {{
+        function openTreeModal(act, tgt) {
             treeAction = act; treeTarget = tgt; treeSelected = null;
             let icon = act === 'move' ? '✂️ Move ' : '📄 Copy ';
             document.getElementById('tree-title').innerText = icon + tgt + " to...";
             document.getElementById('treeModal').style.display = 'flex';
             document.getElementById('tree-list').innerHTML = '<div style="color:var(--accent);text-align:center;padding:30px;font-weight:600;">Scanning Directories...</div>';
             
-            fetch('/action', {{method:'POST', body:new URLSearchParams({{action:'get_tree'}})}}).then(r=>r.json()).then(dirs => {{
+            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_tree'})}).then(r=>r.json()).then(dirs => {
                 let h = '';
-                dirs.forEach(d => {{
+                dirs.forEach(d => {
                     let pad = d === '/' ? 0 : (d.split('/').length - 1) * 20;
                     let name = d === '/' ? 'Root Directory ( / )' : d.split('/').pop();
                     let folIcon = d === '/' ? '🖧' : '📁';
-                    h += `<div class="tree-item" style="padding-left:${{pad + 15}}px" onclick="selectTreeItem(this, '${{d}}')">${{folIcon}} &nbsp; ${{name}}</div>`;
-                }});
+                    h += `<div class="tree-item" style="padding-left:${pad + 15}px" onclick="selectTreeItem(this, '${d}')">${folIcon} &nbsp; ${name}</div>`;
+                });
                 document.getElementById('tree-list').innerHTML = h;
-            }});
-        }}
-        function selectTreeItem(el, path) {{
+            });
+        }
+        function selectTreeItem(el, path) {
             document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
             el.classList.add('selected');
             treeSelected = path === '/' ? '' : path.substring(1);
-        }}
-        function confirmTreeAction() {{
+        }
+        function confirmTreeAction() {
             if(treeSelected === null) return alert('Please select a destination folder first.');
-            fetch('/action', {{method:'POST', body:new URLSearchParams({{action:treeAction, target:treeTarget, dir:currentDir, dest:treeSelected}})}}).then(()=>location.reload());
-        }}
+            fetch('/action', {method:'POST', body:new URLSearchParams({action:treeAction, target:treeTarget, dir:currentDir, dest:treeSelected})}).then(()=>location.reload());
+        }
 
-        function clearLogs() {{ if(confirm('Clear all system logs?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'clear_logs'}}) }}).then(()=>location.reload()); }}
-        function createFolder() {{ let n = prompt("New Folder Name:"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkdir', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function createFile() {{ let n = prompt("New File Name (e.g. script.py):"); if(n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'mkfile', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function deleteItem(n) {{ if(confirm('Permanently delete ' + n + '?')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'delete', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function renameItem(n) {{ let nn = prompt("Rename " + n + " to:", n); if(nn && nn !== n) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'rename', target:n, new_name:nn, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function moveItem(n) {{ openTreeModal('move', n); }}
-        function copyItem(n) {{ openTreeModal('copy', n); }}
-        function lockItem(n) {{ let pwd = prompt("Set Lock Password (leave empty to remove lock):"); if(pwd !== null) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'lock_item', target:n, dir:currentDir, pwd:pwd}}) }}).then(()=>location.reload()); }}
+        function clearLogs() { if(confirm('Clear all system logs?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'clear_logs'}) }).then(()=>location.reload()); }
+        function createFolder() { let n = prompt("New Folder Name:"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkdir', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function createFile() { let n = prompt("New File Name (e.g. script.py):"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkfile', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function deleteItem(n) { if(confirm('Permanently delete ' + n + '?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function renameItem(n) { let nn = prompt("Rename " + n + " to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
+        function moveItem(n) { openTreeModal('move', n); }
+        function copyItem(n) { openTreeModal('copy', n); }
+        function lockItem(n) { let pwd = prompt("Set Lock Password (leave empty to remove lock):"); if(pwd !== null) fetch('/action', {method:'POST', body: new URLSearchParams({action:'lock_item', target:n, dir:currentDir, pwd:pwd}) }).then(()=>location.reload()); }
+        function toggleDl(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'toggle_dl', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         
-        function shareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share', target:n, dir:currentDir}}) }}).then(r=>r.text()).then(l=>{{ prompt("Public Link created:", window.location.origin+l); location.reload(); }}); }}
-        function limitedShareItem(n) {{ let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share_limit', target:n, dir:currentDir, limit:parseInt(limit)}}) }}).then(r=>r.text()).then(l=>{{ prompt("Limited Link created:", window.location.origin+l); location.reload(); }}); }}
-        function pwdShareItem(n) {{ let pwd = prompt("Set Link Password:"); if(pwd) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'share_pwd', target:n, dir:currentDir, pwd:pwd}}) }}).then(r=>r.text()).then(l=>{{ prompt("Secure Link created:", window.location.origin+l); location.reload(); }}); }}
-        function renewItem(n) {{ if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'renew', target:n, dir:currentDir}}) }}).then(r=>r.text()).then(l=>{{ prompt("New Link:", window.location.origin+l); location.reload(); }}); }}
-        function unshareItem(n) {{ fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'unshare', target:n, dir:currentDir}}) }}).then(()=>location.reload()); }}
-        function viewLink(tk) {{ prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }}
+        function shareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'share', target:n, dir:currentDir}) }).then(r=>r.text()).then(l=>{ prompt("Public Link created:", window.location.origin+l); location.reload(); }); }
+        function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) fetch('/action', {method:'POST', body: new URLSearchParams({action:'share_limit', target:n, dir:currentDir, limit:parseInt(limit)}) }).then(r=>r.text()).then(l=>{ prompt("Limited Link created:", window.location.origin+l); location.reload(); }); }
+        function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) fetch('/action', {method:'POST', body: new URLSearchParams({action:'share_pwd', target:n, dir:currentDir, pwd:pwd}) }).then(r=>r.text()).then(l=>{ prompt("Secure Link created:", window.location.origin+l); location.reload(); }); }
+        function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'renew', target:n, dir:currentDir}) }).then(r=>r.text()).then(l=>{ prompt("New Link:", window.location.origin+l); location.reload(); }); }
+        function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
 
-        function editItem(n, lockId) {{
-            if (lockId) {{
+        function editItem(n, lockId) {
+            if (lockId) {
                 document.cookie = "lock_" + lockId + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 let p = prompt("🔒 Locked File. Enter password to edit:");
                 if (p) document.cookie = "lock_" + lockId + "=" + p + ";path=/";
                 else return;
-            }}
-            fetch('/download/' + currentDir + '/' + n).then(r => r.text()).then(t => {{
+            }
+            fetch('/download/' + currentDir + '/' + n).then(r => r.text()).then(t => {
                 document.getElementById('edit-name').innerText = "📝 Editing: " + n;
                 document.getElementById('edit-box').value = t;
                 document.getElementById('edit-box').setAttribute('data-target', n);
                 document.getElementById('editModal').style.display = 'flex';
-            }});
-        }}
-        function saveEdit() {{
+            });
+        }
+        function saveEdit() {
             let n = document.getElementById('edit-box').getAttribute('data-target');
             let t = document.getElementById('edit-box').value;
-            fetch('/action', {{method:'POST', body: new URLSearchParams({{action:'save_text', target:n, dir:currentDir, content:t}}) }}).then(()=>{{ document.getElementById('editModal').style.display='none'; location.reload(); }});
-        }}
+            fetch('/action', {method:'POST', body: new URLSearchParams({action:'save_text', target:n, dir:currentDir, content:t}) }).then(()=>{ document.getElementById('editModal').style.display='none'; location.reload(); });
+        }
 
         const dropZone = document.getElementById('drop-zone');
-        if(dropZone) {{
+        if(dropZone) {
             const input = document.getElementById('file-input'); dropZone.onclick = () => input.click();
             
-            dropZone.addEventListener('dragover', (e) => {{ e.preventDefault(); dropZone.style.borderColor = "var(--accent)"; dropZone.style.background = "rgba(128,128,128,0.1)"; }});
-            dropZone.addEventListener('dragleave', (e) => {{ e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; }});
-            dropZone.addEventListener('drop', (e) => {{ e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; input.files = e.dataTransfer.files; input.dispatchEvent(new Event('change')); }});
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--accent)"; dropZone.style.background = "rgba(128,128,128,0.1)"; });
+            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; });
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; input.files = e.dataTransfer.files; input.dispatchEvent(new Event('change')); });
 
-            input.onchange = (e) => {{
+            input.onchange = (e) => {
                 if(e.target.files.length === 0) return;
                 const fd = new FormData(); for(let f of e.target.files) fd.append('file', f);
                 document.getElementById('progress-wrapper').style.display = 'block';
                 const xhr = new XMLHttpRequest(); xhr.open('POST', '/upload?dir='+encodeURIComponent(currentDir), true);
-                xhr.upload.onprogress = (ev) => {{ 
+                xhr.upload.onprogress = (ev) => { 
                     let percent = Math.round((ev.loaded/ev.total)*100);
                     document.getElementById('progress-bar').style.width = percent + '%'; 
                     document.getElementById('progress-bar').style.boxShadow = "0 0 15px var(--accent)";
-                }};
+                };
                 xhr.onload = () => location.reload(); xhr.send(fd);
-            }};
-        }}
+            };
+        }
     </script>
 </body>
 </html>
@@ -492,16 +490,16 @@ LOGIN_HTML = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
         
-        body {{ 
+        body { 
             display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; margin: 0;
             background: linear-gradient(45deg, #000000, #171717, #262626, #000000);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             font-family: 'Inter', system-ui, sans-serif; 
-        }}
-        @keyframes gradientBG {{ 0% {{background-position: 0% 50%;}} 50% {{background-position: 100% 50%;}} 100% {{background-position: 0% 50%;}} }}
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
         
-        .login-card {{ 
+        .login-card { 
             padding: 40px; width: 90%; max-width: 340px; text-align: center; 
             background: rgba(20, 20, 20, 0.6);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -510,36 +508,36 @@ LOGIN_HTML = """
             border-radius: 20px;
             position: relative; overflow: hidden;
             box-sizing: border-box;
-        }}
+        }
         
-        .login-card::before {{
+        .login-card::before {
             content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
             background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
             z-index: -1; animation: pulse 6s ease-in-out infinite alternate;
-        }}
-        @keyframes pulse {{ 0% {{transform: scale(0.8);}} 100% {{transform: scale(1.2);}} }}
+        }
+        @keyframes pulse { 0% {transform: scale(0.8);} 100% {transform: scale(1.2);} }
 
-        h2 {{ color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); word-break: break-word; }}
+        h2 { color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); word-break: break-word; }
         
-        input {{ 
+        input { 
             width: 100%; padding: 16px; margin: 0 0 25px 0; 
             background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); 
             color: white; border-radius: 12px; box-sizing: border-box; outline: none; 
             font-size: 15px; text-align: center; letter-spacing: 4px; transition: 0.3s;
             font-family: 'Inter';
-        }}
-        input:focus {{ border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); background: rgba(0,0,0,0.8); }}
-        input::placeholder {{ letter-spacing: 2px; color: rgba(255,255,255,0.3); }}
+        }
+        input:focus { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); background: rgba(0,0,0,0.8); }
+        input::placeholder { letter-spacing: 2px; color: rgba(255,255,255,0.3); }
         
-        button {{ 
+        button { 
             width: 100%; padding: 16px; 
             background: #ffffff; color: #000000; 
             border: none; border-radius: 12px; cursor: pointer; 
             font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;
             box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: 0.3s;
             font-family: 'Inter';
-        }}
-        button:hover {{ transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }}
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }
     </style>
 </head>
 <body>
@@ -576,7 +574,6 @@ def get_preview_type(filename):
 class FileHubHandler(http.server.BaseHTTPRequestHandler):
     CONFIG = {}
     
-    # خنثی کردن سیستم جستجوی نام دامین در شبکه برای افزایش بی‌نهایت سرعت
     def address_string(self):
         return self.client_address[0]
 
@@ -627,7 +624,10 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             return self.send_error(404)
         
         role = self.get_role()
-        if not role: self._send_resp(LOGIN_HTML.format(site_name=self.CONFIG['SITE_NAME'])); return
+        if not role: 
+            html_out = LOGIN_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB')))
+            self._send_resp(html_out)
+            return
         
         q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]; curr = self.get_safe_path(q)
         rel_curr = self.get_rel(curr)
@@ -644,10 +644,19 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             if self.check_item_lock(rel_curr): self._serve_ui(role, curr, q)
         elif parsed.path.startswith("/download/"):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[10:]))
-            if not self.check_item_lock(self.get_rel(target)): return
+            rel = self.get_rel(target)
+            if not self.check_item_lock(rel): return
+            
+            # --- سیستم بررسی دسترسی دانلود (Stream Only) ---
+            is_dl = urllib.parse.parse_qs(parsed.query).get('dl', ['0'])[0] == '1'
+            ndl = load_json(NODL_FILE)
+            if role != 'admin' and rel in ndl and is_dl:
+                self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;margin:0;padding:20px;box-sizing:border-box;"><div class="glass-box" style="padding:40px;text-align:center;border-color:var(--neon-orange);max-width:400px;width:100%;"><h1 style="color:var(--neon-orange);margin:0;font-weight:800;letter-spacing:2px;">👀 STREAM ONLY</h1><p style="color:var(--text-muted);margin-top:15px;font-size:15px;">The administrator has disabled downloading for this file.</p><button onclick="window.close()" style="margin-top:20px; padding:10px 20px; background:var(--glass-border); border:none; color:white; border-radius:8px; cursor:pointer;">Close</button></div></body>')
+                return
+
             if os.path.isfile(target): 
-                add_log(self.client_address[0], f"Downloaded File: {self.get_rel(target)}")
-                self._send_file(target, dl=True)
+                add_log(self.client_address[0], f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
+                self._send_file(target, dl=is_dl)
         elif parsed.path == "/logout":
             add_log(self.client_address[0], "Logged Out")
             self.send_response(302); self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
@@ -688,7 +697,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             l = int(self.headers.get('Content-Length', 0)); data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             act, target = data.get('action',[''])[0], data.get('target',[''])[0]
             
-            # ارسال داینامیک لاگ‌ها بدون سنگین کردن صفحه
             if act == 'get_logs':
                 content = ""
                 if os.path.exists(LOG_FILE):
@@ -746,6 +754,11 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 if pwd: locks[rel] = pwd
                 else: locks.pop(rel, None)
                 save_json(locks, LOCKS_FILE)
+            elif act == 'toggle_dl' and os.path.isfile(tp):
+                ndl = load_json(NODL_FILE)
+                if rel in ndl: del ndl[rel]
+                else: ndl[rel] = True
+                save_json(ndl, NODL_FILE)
             elif act in ['share', 'share_limit', 'share_pwd', 'renew'] and os.path.isfile(tp):
                 lns = load_json(LINKS_FILE)
                 if act == 'renew': lns = {k:v for k,v in lns.items() if (v.get('target') if isinstance(v, dict) else v) != rel}
@@ -761,13 +774,23 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
     def _serve_ui(self, role, curr, req_dir):
         pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
         for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()">+ New File</button>' if role == 'admin' else ''
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
         up_area = '<div class="glass-box" id="drop-zone" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to upload</p><input type="file" id="file-input" hidden multiple><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
         
-        # نگاشت پیشرفته (Indexing) فایل‌های اشتراکی برای حذف گلوگاه پرفورمنس
+        # --- سیستم داشبورد فضای ذخیره‌سازی ---
+        disk_html = ""
+        if role == 'admin':
+            try:
+                tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
+                dir_size = sum(os.path.getsize(os.path.join(dp, f)) for dp, dn, fn in os.walk(self.CONFIG['UPLOAD_DIR']) for f in fn if not os.path.islink(os.path.join(dp, f)))
+                disk_html = f"""<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div></div>"""
+            except: disk_html = ""
+
         lns = load_json(LINKS_FILE)
         locks = load_json(LOCKS_FILE)
+        ndl = load_json(NODL_FILE)
+        
         link_map = {}
         for tk, data in lns.items():
             tgt = data.get('target') if isinstance(data, dict) else data
@@ -777,7 +800,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         rows = ""
         if pts: rows += f'<div class="file-item" data-name=".."><div class="file-info"><span style="font-size:20px">🔙</span><a href="/?dir={urllib.parse.quote("/".join(pts[:-1]))}" class="file-name" style="color:var(--accent);">Return to Parent</a></div></div>'
         
-        # استفاده از scandir به جای listdir برای افزایش 5 برابری سرعت پیمایش در پوشه‌های شلوغ
         try:
             entries = list(os.scandir(curr))
             entries.sort(key=lambda e: (not e.is_dir(), e.name.lower()))
@@ -785,7 +807,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         
         for e in entries:
             f = e.name
-            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE]: continue
+            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE, NODL_FILE, sys.argv[0].split('/')[-1].split('\\')[-1]]: continue
             
             is_d = e.is_dir()
             stat = e.stat()
@@ -794,8 +816,10 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             full = e.path
             rel = self.get_rel(full)
             
+            is_no_dl = rel in ndl
             lock_id = hashlib.md5(rel.encode()).hexdigest() if rel in locks else ""
             lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
+            stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
             
             if is_d:
                 nx = f"{req_dir}/{f}".strip('/')
@@ -809,7 +833,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 
                 share_badge = ""
                 view_link_btn = ""
-                # جستجو در دیکشنری به جای لوپ زدن روی کل فایل json
                 if rel in link_map:
                     tk, data = link_map[rel][0]
                     pwd_hint = f" (Pass: {data.get('pwd')})" if isinstance(data, dict) and data.get('pwd') else ""
@@ -819,17 +842,29 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
                 
                 if role == 'admin':
+                    toggle_dl_btn = f'<button class="action-accent" onclick="toggleDl(\'{f}\')">{"✅ Enable Download" if is_no_dl else "🚫 Disable Download"}</button>'
                     s_btns = f'{view_link_btn}<button class="action-accent" onclick="renewItem(\'{f}\')">🔄 Renew Link</button><button class="action-red" onclick="unshareItem(\'{f}\')">🚫 Unshare</button>' if share_badge else f'<button class="action-accent" onclick="shareItem(\'{f}\')">🔗 Public Link</button><button class="action-accent" onclick="limitedShareItem(\'{f}\')">⏳ Limited Link</button><button class="action-orange" onclick="pwdShareItem(\'{f}\')">🔑 Secure Link</button>'
                     edit_btn = f'<button class="action-orange" onclick="editItem(\'{f}\', \'{lock_id}\')">📝 Edit File</button>' if is_text else ""
-                    admin_h = f'{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f}\')">🗑️ Delete</button>'
+                    admin_h = f'{toggle_dl_btn}{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f}\')">🗑️ Delete</button>'
                 else: 
                     admin_h = ''
                     
-                dl_btn = f'<button onclick="handleItemClick(\'/download{dl}\', \'download\', \'{lock_id}\')" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</button>'
+                # مخفی کردن دکمه دانلود برای کاربران در صورت فعال بودن قفل دانلود
+                dl_btn = f'<button onclick="handleItemClick(\'/download{dl}&dl=1\', \'download\', \'{lock_id}\')" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</button>' if role == 'admin' or not is_no_dl else ''
                 
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                rows += f'<div class="file-item" data-name="{f}"><div class="file-info"><span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
         
-        self._send_resp(UI_HTML.format(site_name=self.CONFIG['SITE_NAME'], role=role.capitalize(), breadcrumbs=bc, admin_top_btn=admin_btn, admin_log_btn=admin_log_btn, admin_upload_area=up_area, file_rows=rows, current_dir=req_dir))
+        html_out = UI_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB'))) \
+                          .replace('{role}', str(role.capitalize())) \
+                          .replace('{breadcrumbs}', str(bc)) \
+                          .replace('{admin_top_btn}', str(admin_btn)) \
+                          .replace('{admin_log_btn}', str(admin_log_btn)) \
+                          .replace('{disk_dashboard}', str(disk_html)) \
+                          .replace('{admin_upload_area}', str(up_area)) \
+                          .replace('{file_rows}', str(rows)) \
+                          .replace('{current_dir}', str(req_dir))
+                          
+        self._send_resp(html_out)
 
     def _handle_upload(self, curr):
         try:
