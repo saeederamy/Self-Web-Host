@@ -916,4 +916,3 @@ def main():
             print(f"[*] Hub live at port {cfg['PORT']}"); h.serve_forever()
 
 if __name__ == "__main__": main()
-    
