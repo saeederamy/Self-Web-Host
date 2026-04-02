@@ -1030,6 +1030,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
+            # خواندن خطوط تا رسیدن به اولین boundary
             while remainbytes > 0:
                 line = self.rfile.readline()
                 remainbytes -= len(line)
@@ -1039,6 +1040,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             while remainbytes > 0:
                 filename = None
                 
+                # پارس کردن هدرهای فایل فعلی
                 while remainbytes > 0:
                     line = self.rfile.readline()
                     remainbytes -= len(line)
@@ -1058,6 +1060,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         break
                     continue
                     
+                # نوشتن دیتای فایل
                 out_path = os.path.join(curr, filename)
                 with open(out_path, 'wb') as f:
                     preline = self.rfile.readline()
