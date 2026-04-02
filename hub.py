@@ -9,11 +9,13 @@ NODL_FILE = "no_download.json"
 
 def load_json(path):
     if os.path.exists(path):
-        with open(path, 'r') as f: return json.load(f)
+        with open(path, 'r') as f: 
+            return json.load(f)
     return {}
 
 def save_json(data, path):
-    with open(path, 'w') as f: json.dump(data, f)
+    with open(path, 'w') as f: 
+        json.dump(data, f)
 
 def add_log(ip, action):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -28,15 +30,19 @@ def add_log(ip, action):
 
 def check_ip(ip):
     b = load_json(BLOCK_FILE)
-    if ip in b and b[ip].get('block_until', 0) > time.time(): return True
+    if ip in b and b[ip].get('block_until', 0) > time.time(): 
+        return True
     return False
 
 def rec_fail(ip, max_fails):
-    b = load_json(BLOCK_FILE); now = time.time()
-    if ip not in b: b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
+    b = load_json(BLOCK_FILE)
+    now = time.time()
+    if ip not in b: 
+        b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
     else:
         b[ip]['fails'] = 1 if now - b[ip]['last'] > 86400 else b[ip]['fails'] + 1
         b[ip]['last'] = now
+        
     if b[ip]['fails'] >= max_fails: 
         b[ip]['block_until'] = now + 86400
         add_log(ip, "BANNED FOR 24 HOURS (Brute-Force)")
@@ -44,7 +50,9 @@ def rec_fail(ip, max_fails):
 
 def clr_fail(ip):
     b = load_json(BLOCK_FILE)
-    if ip in b: del b[ip]; save_json(b, BLOCK_FILE)
+    if ip in b: 
+        del b[ip]
+        save_json(b, BLOCK_FILE)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE): return None
@@ -175,7 +183,15 @@ UI_HTML = """
     </script>
     <style>
         """ + COMMON_STYLE + """
-        .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+        .header { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(20px); 
+            border-bottom: 1px solid var(--glass-border); 
+            padding: 15px 30px; display: flex; 
+            justify-content: space-between; 
+            align-items: center; position: sticky; top: 0; z-index: 1000; 
+            box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; 
+        }
         .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
         .header-controls { display: flex; align-items: center; gap: 15px; }
         
@@ -199,7 +215,6 @@ UI_HTML = """
         
         .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         
-        .file-list { } 
         .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
         .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
         .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
@@ -350,15 +365,18 @@ UI_HTML = """
         }
         
         let selectedFiles = [];
+        
         function toggleSelection(e) {
             e.stopPropagation();
             updateBatchBar();
         }
+        
         function toggleAll(e) {
             let cbs = document.querySelectorAll('.file-cb');
             cbs.forEach(cb => cb.checked = e.target.checked);
             updateBatchBar();
         }
+        
         function updateBatchBar() {
             selectedFiles = Array.from(document.querySelectorAll('.file-cb:checked')).map(cb => cb.value);
             let bar = document.getElementById('batch-bar');
@@ -369,11 +387,16 @@ UI_HTML = """
                 bar.style.display = 'none';
             }
         }
+        
         function batchDelete() {
             if(confirm('Permanently delete ' + selectedFiles.length + ' items?')) {
-                fetch('/action', {method:'POST', body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})}).then(()=>location.reload());
+                fetch('/action', {
+                    method:'POST', 
+                    body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})
+                }).then(()=>location.reload());
             }
         }
+        
         function batchMove() { openTreeModal('batch_move', selectedFiles.join('|')); }
         function batchCopy() { openTreeModal('batch_copy', selectedFiles.join('|')); }
 
@@ -409,31 +432,42 @@ UI_HTML = """
         }
         
         function openPreview(url, type) {
-            const body = document.getElementById('previewBody'); body.innerHTML = ''; document.getElementById('previewModal').style.display = 'flex';
+            const body = document.getElementById('previewBody'); 
+            body.innerHTML = ''; 
+            document.getElementById('previewModal').style.display = 'flex';
+            
             if (type === 'image') body.innerHTML = `<img src="${url}" oncontextmenu="return false;" style="pointer-events:none;">`;
             else if (type === 'video') body.innerHTML = `<video controls controlsList="nodownload" autoplay style="width:100%;" oncontextmenu="return false;"><source src="${url}"></video>`;
             else if (type === 'audio') body.innerHTML = `<audio controls controlsList="nodownload" autoplay style="width:300px;" oncontextmenu="return false;"><source src="${url}"></audio>`;
             else if (type === 'pdf') body.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; background:#fff;" oncontextmenu="return false;"></iframe>`;
             else window.location.href = url + "&dl=1";
         }
-        function closePreview() { document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }
+        
+        function closePreview() { 
+            document.getElementById('previewModal').style.display = 'none'; 
+            document.getElementById('previewBody').innerHTML = ''; 
+        }
         
         function openLogs() {
             document.getElementById('logModal').style.display='flex';
             document.getElementById('log-viewer').value = 'Loading...';
-            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_logs'})}).then(r=>r.text()).then(t=>document.getElementById('log-viewer').value=t);
+            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_logs'})})
+            .then(r=>r.text()).then(t=>document.getElementById('log-viewer').value=t);
         }
         
         let treeAction = ''; let treeTarget = ''; let treeSelected = null;
+        
         function openTreeModal(act, tgt) {
             treeAction = act; treeTarget = tgt; treeSelected = null;
             let icon = act.includes('move') ? '✂️ Move ' : '📄 Copy ';
             let lbl = act.includes('batch_') ? selectedFiles.length + ' items' : tgt;
+            
             document.getElementById('tree-title').innerText = icon + lbl + " to...";
             document.getElementById('treeModal').style.display = 'flex';
             document.getElementById('tree-list').innerHTML = '<div style="color:var(--accent);text-align:center;padding:30px;font-weight:600;">Scanning Directories...</div>';
             
-            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_tree'})}).then(r=>r.json()).then(dirs => {
+            fetch('/action', {method:'POST', body:new URLSearchParams({action:'get_tree'})})
+            .then(r=>r.json()).then(dirs => {
                 let h = '';
                 dirs.forEach(d => {
                     let pad = d === '/' ? 0 : (d.split('/').length - 1) * 20;
@@ -444,13 +478,16 @@ UI_HTML = """
                 document.getElementById('tree-list').innerHTML = h;
             });
         }
+        
         function selectTreeItem(el, path) {
             document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
             el.classList.add('selected');
             treeSelected = path === '/' ? '' : path.substring(1);
         }
+        
         function confirmTreeAction() {
             if(treeSelected === null) return alert('Please select a destination folder first.');
+            
             if(treeAction.startsWith('batch_')) {
                 fetch('/action', {method:'POST', body:new URLSearchParams({action:treeAction, targets:treeTarget, dir:currentDir, dest:treeSelected})}).then(()=>location.reload());
             } else {
@@ -469,10 +506,12 @@ UI_HTML = """
         function toggleDl(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'toggle_dl', target:n, dir:currentDir}) }).then(()=>location.reload()); }
 
         function askPathAndFetch(action, target, extraParams = {}) {
-            let cPath = prompt("Enter custom link path (leave empty for random):\\nOnly letters, numbers, dash, underscore allowed.", "");
+            let cPath = prompt("Enter custom link path (leave empty for random):\nOnly letters, numbers, dash, underscore allowed.", "");
             if(cPath === null) return;
+            
             let params = {action: action, target: target, dir: currentDir, custom_path: cPath};
             Object.assign(params, extraParams);
+            
             fetch('/action', {method:'POST', body: new URLSearchParams(params)})
             .then(r=>r.text()).then(l=>{
                 if(l === "EXISTS") alert("⚠️ This custom path already exists! Please try another one.");
@@ -502,6 +541,7 @@ UI_HTML = """
                 document.getElementById('editModal').style.display = 'flex';
             });
         }
+        
         function saveEdit() {
             let n = document.getElementById('edit-box').getAttribute('data-target');
             let t = document.getElementById('edit-box').value;
@@ -521,11 +561,20 @@ UI_HTML = """
                 input.click();
             };
             
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--accent)"; dropZone.style.background = "rgba(128,128,128,0.1)"; });
-            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; });
+            dropZone.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                dropZone.style.borderColor = "var(--accent)"; 
+                dropZone.style.background = "rgba(128,128,128,0.1)"; 
+            });
+            dropZone.addEventListener('dragleave', (e) => { 
+                e.preventDefault(); 
+                dropZone.style.borderColor = "var(--glass-border)"; 
+                dropZone.style.background = "var(--glass-bg)"; 
+            });
             dropZone.addEventListener('drop', (e) => { 
                 e.preventDefault(); 
-                dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "var(--glass-bg)"; 
+                dropZone.style.borderColor = "var(--glass-border)"; 
+                dropZone.style.background = "var(--glass-bg)"; 
                 if(e.dataTransfer.files.length > 0) {
                     pendingFiles = Array.from(e.dataTransfer.files);
                     showPending();
@@ -547,24 +596,35 @@ UI_HTML = """
             }
 
             btnConfirm.onclick = (e) => {
-                e.preventDefault(); e.stopPropagation();
+                e.preventDefault(); 
+                e.stopPropagation();
                 if(pendingFiles.length === 0) return;
-                if(btnConfirm.innerText.includes("Reload")) { location.reload(); return; }
+                if(btnConfirm.innerText.includes("Reload")) { 
+                    location.reload(); 
+                    return; 
+                }
                 
                 btnConfirm.style.pointerEvents = 'none';
                 btnConfirm.innerText = '⏳ Uploading... Please wait';
                 selFiles.style.opacity = '0.5';
                 
                 const fd = new FormData(); 
-                for(let f of pendingFiles) fd.append('file', f);
+                for(let f of pendingFiles) {
+                    fd.append('file', f);
+                }
                 
                 document.getElementById('progress-wrapper').style.display = 'block';
-                const xhr = new XMLHttpRequest(); xhr.open('POST', '/upload?dir='+encodeURIComponent(currentDir), true);
+                const xhr = new XMLHttpRequest(); 
+                xhr.open('POST', '/upload?dir='+encodeURIComponent(currentDir), true);
+                
                 xhr.upload.onprogress = (ev) => { 
-                    let percent = Math.round((ev.loaded/ev.total)*100);
-                    document.getElementById('progress-bar').style.width = percent + '%'; 
-                    document.getElementById('progress-bar').style.boxShadow = "0 0 15px var(--accent)";
+                    if(ev.lengthComputable) {
+                        let percent = Math.round((ev.loaded/ev.total)*100);
+                        document.getElementById('progress-bar').style.width = percent + '%'; 
+                        document.getElementById('progress-bar').style.boxShadow = "0 0 15px var(--accent)";
+                    }
                 };
+                
                 xhr.onload = () => {
                     btnConfirm.style.pointerEvents = 'auto';
                     btnConfirm.innerText = "✅ Upload Complete! Click to Reload";
@@ -573,10 +633,82 @@ UI_HTML = """
                     btnConfirm.style.borderColor = "#10b981";
                     btnConfirm.style.boxShadow = "0 0 20px rgba(16, 185, 129, 0.4)";
                 };
+                
                 xhr.send(fd);
             };
         }
     </script>
+</body>
+</html>
+"""
+
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Access</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
+        
+        body { 
+            display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; margin: 0;
+            background: linear-gradient(45deg, #000000, #171717, #262626, #000000);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Inter', system-ui, sans-serif; 
+        }
+        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
+        
+        .login-card { 
+            padding: 40px; width: 90%; max-width: 340px; text-align: center; 
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+            border-radius: 20px;
+            position: relative; overflow: hidden;
+            box-sizing: border-box;
+        }
+        
+        .login-card::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
+            z-index: -1; animation: pulse 6s ease-in-out infinite alternate;
+        }
+        @keyframes pulse { 0% {transform: scale(0.8);} 100% {transform: scale(1.2);} }
+
+        h2 { color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); word-break: break-word; }
+        
+        input { 
+            width: 100%; padding: 16px; margin: 0 0 25px 0; 
+            background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); 
+            color: white; border-radius: 12px; box-sizing: border-box; outline: none; 
+            font-size: 15px; text-align: center; letter-spacing: 4px; transition: 0.3s;
+            font-family: 'Inter';
+        }
+        input:focus { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); background: rgba(0,0,0,0.8); }
+        input::placeholder { letter-spacing: 2px; color: rgba(255,255,255,0.3); }
+        
+        button { 
+            width: 100%; padding: 16px; 
+            background: #ffffff; color: #000000; 
+            border: none; border-radius: 12px; cursor: pointer; 
+            font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: 0.3s;
+            font-family: 'Inter';
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>{site_name}</h2>
+        <form method="POST" action="/login">
+            <input type="password" name="password" placeholder="••••••••" required autofocus>
+            <button type="submit">Login</button>
+        </form>
+    </div>
 </body>
 </html>
 """
@@ -630,6 +762,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/download_logs" and self.get_role() == "admin":
             if os.path.exists(LOG_FILE): return self._send_file(LOG_FILE, dl=True, name="access_log.txt")
             else: self.send_error(404); return
+            
         if parsed.path.startswith("/p/"):
             tk = parsed.path.split("/p/")[1]; lns = load_json(LINKS_FILE)
             if tk in lns:
@@ -637,11 +770,13 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 target_rel = link_data.get('target') if isinstance(link_data, dict) else link_data
                 limit = link_data.get('limit', -1) if isinstance(link_data, dict) else -1
                 pwd = link_data.get('pwd', '') if isinstance(link_data, dict) else ''
+                
                 if pwd:
                     req_pwd = urllib.parse.parse_qs(parsed.query).get('pwd', [''])[0]
                     if req_pwd != pwd:
                         self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;"><script>let p=prompt("Secure Link - Password Required:");if(p)window.location.href="?pwd="+p;else document.body.innerHTML="<div class=\'glass-box\' style=\'padding:30px;color:var(--neon-red);\'>Access Denied</div>";</script></body>')
                         return
+                        
                 target = self.get_safe_path(target_rel)
                 if os.path.isfile(target):
                     add_log(self.client_address[0], f"Public Link Download: {target_rel}")
@@ -669,8 +804,10 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 tmp_base = tempfile.mktemp(); shutil.make_archive(tmp_base, 'zip', target); zip_path = tmp_base + '.zip'
                 self._send_file(zip_path, dl=True, name=os.path.basename(target)+".zip"); os.remove(zip_path)
             return
+            
         if parsed.path == "/": 
             if self.check_item_lock(rel_curr): self._serve_ui(role, curr, q)
+            
         elif parsed.path.startswith("/download/"):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[10:]))
             rel = self.get_rel(target)
@@ -685,9 +822,13 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             if os.path.isfile(target): 
                 add_log(self.client_address[0], f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
                 self._send_file(target, dl=is_dl)
+                
         elif parsed.path == "/logout":
             add_log(self.client_address[0], "Logged Out")
-            self.send_response(302); self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
+            self.send_response(302)
+            self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly")
+            self.send_header("Location", "/")
+            self.end_headers()
 
     def check_item_lock(self, target_rel):
         role = self.get_role()
@@ -706,11 +847,16 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         
         if parsed.path == "/login":
-            l = int(self.headers.get('Content-Length', 0)); pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
+            l = int(self.headers.get('Content-Length', 0))
+            pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
             if pwd == self.CONFIG['ADMIN_PWD'] or pwd == self.CONFIG['GUEST_PWD']:
                 clr_fail(self.client_address[0])
                 add_log(self.client_address[0], "Login Successful")
-                tk = hashlib.sha256(pwd.encode()).hexdigest(); self.send_response(302); self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly"); self.send_header("Location", "/"); self.end_headers()
+                tk = hashlib.sha256(pwd.encode()).hexdigest()
+                self.send_response(302)
+                self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly")
+                self.send_header("Location", "/")
+                self.end_headers()
             else: 
                 max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
                 rec_fail(self.client_address[0], max_fails)
@@ -720,9 +866,13 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         if self.get_role() != "admin": return
         q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]; curr = self.get_safe_path(q)
         
-        if parsed.path == "/upload": self._handle_upload(curr)
+        if parsed.path == "/upload": 
+            self._handle_upload(curr)
+            return
+            
         elif parsed.path == "/action":
-            l = int(self.headers.get('Content-Length', 0)); data = urllib.parse.parse_qs(self.rfile.read(l).decode())
+            l = int(self.headers.get('Content-Length', 0))
+            data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             act, target = data.get('action',[''])[0], data.get('target',[''])[0]
             
             if act == 'get_logs':
@@ -765,7 +915,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             if act == 'mkdir': os.makedirs(tp, exist_ok=True)
             elif act == 'mkfile': 
                 if not os.path.exists(tp): open(tp, 'w', encoding='utf-8').close()
-            elif act == 'delete' and os.path.exists(tp): shutil.rmtree(tp) if os.path.isdir(tp) else os.remove(tp)
+            elif act == 'delete' and os.path.exists(tp): 
+                shutil.rmtree(tp) if os.path.isdir(tp) else os.remove(tp)
             elif act == 'rename' and os.path.exists(tp):
                 new_name = data.get('new_name', [''])[0]; new_tp = os.path.join(curr, new_name)
                 if new_name and not os.path.exists(new_tp):
@@ -824,6 +975,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 lns = load_json(LINKS_FILE)
                 lns = {k:v for k,v in lns.items() if (v.get('target') if isinstance(v, dict) else v) != rel}
                 save_json(lns, LINKS_FILE)
+                
             self.send_response(200); self.end_headers()
 
     def _serve_ui(self, role, curr, req_dir):
@@ -831,7 +983,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
         
         select_all_btn = '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text-main);font-size:12px;font-weight:bold;background:var(--glass-bg);padding:6px 12px;border-radius:8px;border:1px solid var(--glass-border);"><input type="checkbox" onchange="toggleAll(event)"> Select All</label>' if role == 'admin' else ''
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()">+ New File</button>' if role == 'admin' else ''
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
         
         up_area = '<div class="glass-box" id="drop-zone" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" hidden multiple><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-confirm-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;">🚀 Confirm & Upload</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
@@ -926,43 +1078,71 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
 
     def _handle_upload(self, curr):
         try:
-            ct = self.headers.get('Content-Type')
-            if not ct or 'boundary=' not in ct:
-                self.send_error(400); return
-            boundary = ct.split('boundary=')[1].encode()
+            content_type = self.headers.get('Content-Type')
+            if not content_type or 'boundary=' not in content_type:
+                self.send_error(400)
+                return
+                
+            boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
-            line = self.rfile.readline(); remainbytes -= len(line)
+            # Read until the first boundary
             while remainbytes > 0:
-                line = self.rfile.readline(); remainbytes -= len(line)
-                fn = re.findall(r'filename="(.*?)"', line.decode('utf-8', 'ignore'))
-                if not fn:
-                    while remainbytes > 0:
-                        line = self.rfile.readline(); remainbytes -= len(line)
-                        if boundary in line: break
-                    continue
+                line = self.rfile.readline()
+                remainbytes -= len(line)
+                if boundary in line:
+                    break
+                    
+            while remainbytes > 0:
+                filename = None
                 
-                filename = fn[0]
+                # Parse headers of the current file part
                 while remainbytes > 0:
-                    line = self.rfile.readline(); remainbytes -= len(line)
-                    if line == b'\r\n': break
-                
-                out = os.path.join(curr, filename)
-                with open(out, 'wb') as f:
-                    preline = self.rfile.readline(); remainbytes -= len(preline)
+                    line = self.rfile.readline()
+                    remainbytes -= len(line)
+                    if line == b'\r\n':
+                        break
+                    fn = re.findall(r'filename="(.*?)"', line.decode('utf-8', 'ignore'))
+                    if fn:
+                        filename = fn[0]
+                        
+                if not filename:
+                    # Skip to the next boundary if no filename
                     while remainbytes > 0:
-                        line = self.rfile.readline(); remainbytes -= len(line)
+                        line = self.rfile.readline()
+                        remainbytes -= len(line)
                         if boundary in line:
-                            preline = preline[0:-1]
-                            if preline.endswith(b'\r'): preline = preline[0:-1]
-                            f.write(preline)
+                            break
+                    if b'--' + boundary + b'--' in line:
+                        break
+                    continue
+                    
+                # Write file content
+                out_path = os.path.join(curr, filename)
+                with open(out_path, 'wb') as f:
+                    preline = self.rfile.readline()
+                    remainbytes -= len(preline)
+                    while remainbytes > 0:
+                        line = self.rfile.readline()
+                        remainbytes -= len(line)
+                        if boundary in line:
+                            if preline.endswith(b'\r\n'):
+                                f.write(preline[:-2])
+                            elif preline.endswith(b'\n'):
+                                f.write(preline[:-1])
+                            else:
+                                f.write(preline)
                             break
                         else:
                             f.write(preline)
                             preline = line
+                            
                 add_log(self.client_address[0], f"Uploaded File: {filename}")
-            
-            self.send_response(200); self.end_headers()
+                if b'--' + boundary + b'--' in line:
+                    break
+                    
+            self.send_response(200)
+            self.end_headers()
         except Exception as e:
             print("Upload Error:", e)
             self.send_error(500)
@@ -977,24 +1157,36 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(200); self.send_header("Content-type", "text/html; charset=utf-8"); self.end_headers(); self.wfile.write(h.encode('utf-8'))
 
 def main():
-    p = argparse.ArgumentParser(); p.add_argument('cmd', choices=['setup', 'run']); args = p.parse_args()
+    p = argparse.ArgumentParser()
+    p.add_argument('cmd', choices=['setup', 'run'])
+    args = p.parse_args()
+    
     if args.cmd == "setup":
-        print("\n--- HUB SETUP (Press Enter for Defaults) ---")
+        print("\n--- HUB SETUP ---")
         sn = input("Site Name [BLACK HUB]: ") or "BLACK HUB"
         ap = input("Admin Password [admin]: ") or "admin"
         gp = input("Guest Password [1234]: ") or "1234"
         pt = input("Port [5000]: ") or "5000"
         sd = input("Storage Path [./uploads]: ") or "./uploads"
-        mf = input("Max Failed Logins before Ban [15]: ") or "15"
+        
         with open(CONFIG_FILE, "w", encoding="utf-8") as f: 
-            f.write(f"SITE_NAME={sn}\nADMIN_PWD={ap}\nGUEST_PWD={gp}\nPORT={pt}\nUPLOAD_DIR={sd}\nMAX_FAILS={mf}\n")
-        if not os.path.exists(sd): os.makedirs(sd)
+            f.write(f"SITE_NAME={sn}\nADMIN_PWD={ap}\nGUEST_PWD={gp}\nPORT={pt}\nUPLOAD_DIR={sd}\nMAX_FAILS=15\n")
+            
+        if not os.path.exists(sd): 
+            os.makedirs(sd)
+            
         print(f"\n[✔] Setup Complete! Run 'python hub.py run' to start.")
+        
     elif args.cmd == "run":
+        socketserver.TCPServer.allow_reuse_address = True
         cfg = load_config()
-        if not cfg: return print("[!] Run setup first.")
+        if not cfg: 
+            print("[!] No config found! Run Setup first."); return
+            
         FileHubHandler.CONFIG = cfg
         with socketserver.ThreadingTCPServer(("", int(cfg['PORT'])), FileHubHandler) as h:
-            print(f"[*] Hub live at port {cfg['PORT']}"); h.serve_forever()
+            print(f"[*] Hub is running on port {cfg['PORT']}...")
+            h.serve_forever()
 
-if __name__ == "__main__": main()
+if __name__ == "__main__": 
+    main()
