@@ -1,4 +1,18 @@
-import http.server, socketserver, os, urllib.parse, html, hashlib, sys, argparse, shutil, re, json, uuid, datetime, tempfile, time
+import http.server
+import socketserver
+import os
+import urllib.parse
+import html
+import hashlib
+import sys
+import argparse
+import shutil
+import re
+import json
+import uuid
+import datetime
+import tempfile
+import time
 
 CONFIG_FILE = "fileserver.conf"
 LINKS_FILE = "public_links.json"
@@ -9,12 +23,12 @@ NODL_FILE = "no_download.json"
 
 def load_json(path):
     if os.path.exists(path):
-        with open(path, 'r') as f: 
+        with open(path, 'r', encoding='utf-8') as f: 
             return json.load(f)
     return {}
 
 def save_json(data, path):
-    with open(path, 'w') as f: 
+    with open(path, 'w', encoding='utf-8') as f: 
         json.dump(data, f)
 
 def add_log(ip, action):
@@ -75,107 +89,108 @@ def is_in_locked_path(target_rel, l_path):
     return False
 
 COMMON_STYLE = """
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
-    
-    :root {
-        --bg-dark: #0a0a0a; 
-        --bg-gradient: radial-gradient(circle at 50% 0%, #1f1f1f 0%, #0a0a0a 70%);
-        --glass-bg: rgba(255, 255, 255, 0.03);
-        --glass-border: rgba(255, 255, 255, 0.1);
-        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-        
-        --accent: #ffffff;
-        --accent-glow: rgba(255, 255, 255, 0.3);
-        --accent-text: #000000;
-        
-        --neon-red: #ef4444;
-        --neon-red-glow: rgba(239, 68, 68, 0.4);
-        --neon-orange: #f97316;
-        --neon-orange-glow: rgba(249, 115, 22, 0.4);
-        
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --input-bg: rgba(0,0,0,0.4);
-    }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
 
-    [data-theme="black-blue"] {
-        --bg-dark: #0a0a0f; 
-        --bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0f 70%);
-        --accent: #3b82f6;
-        --accent-glow: rgba(59, 130, 246, 0.4);
-        --accent-text: #ffffff;
-    }
+:root {
+    --bg-dark: #0a0a0a; 
+    --bg-gradient: radial-gradient(circle at 50% 0%, #1f1f1f 0%, #0a0a0a 70%);
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    
+    --accent: #ffffff;
+    --accent-glow: rgba(255, 255, 255, 0.3);
+    --accent-text: #000000;
+    
+    --neon-red: #ef4444;
+    --neon-red-glow: rgba(239, 68, 68, 0.4);
+    --neon-orange: #f97316;
+    --neon-orange-glow: rgba(249, 115, 22, 0.4);
+    
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --input-bg: rgba(0,0,0,0.4);
+}
 
-    [data-theme="black-red"] {
-        --bg-dark: #0f0000; 
-        --bg-gradient: radial-gradient(circle at 50% 0%, #2a0808 0%, #0f0000 70%);
-        --accent: #ef4444;
-        --accent-glow: rgba(239, 68, 68, 0.4);
-        --accent-text: #ffffff;
-    }
-    
-    [data-theme="pure-black"] {
-        --bg-dark: #000000; 
-        --bg-gradient: none;
-        --glass-bg: #000000;
-        --glass-border: #333333;
-        --glass-shadow: none;
-        --accent: #ffffff;
-        --accent-glow: rgba(255, 255, 255, 0.1);
-        --accent-text: #000000;
-        --text-main: #e5e5e5;
-        --text-muted: #737373;
-        --input-bg: #000000;
-    }
+[data-theme="black-blue"] {
+    --bg-dark: #0a0a0f; 
+    --bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0f 70%);
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.4);
+    --accent-text: #ffffff;
+}
 
-    [data-theme="light"] {
-        --bg-dark: #f8fafc; 
-        --bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 100%);
-        --glass-bg: rgba(255, 255, 255, 0.6);
-        --glass-border: rgba(0, 0, 0, 0.1);
-        --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-        
-        --accent: #0f172a;
-        --accent-glow: rgba(15, 23, 42, 0.2);
-        --accent-text: #ffffff;
-        
-        --text-main: #0f172a;
-        --text-muted: #475569;
-        --input-bg: rgba(255,255,255,0.8);
-    }
+[data-theme="black-red"] {
+    --bg-dark: #0f0000; 
+    --bg-gradient: radial-gradient(circle at 50% 0%, #2a0808 0%, #0f0000 70%);
+    --accent: #ef4444;
+    --accent-glow: rgba(239, 68, 68, 0.4);
+    --accent-text: #ffffff;
+}
+
+[data-theme="pure-black"] {
+    --bg-dark: #000000; 
+    --bg-gradient: none;
+    --glass-bg: #000000;
+    --glass-border: #333333;
+    --glass-shadow: none;
+    --accent: #ffffff;
+    --accent-glow: rgba(255, 255, 255, 0.1);
+    --accent-text: #000000;
+    --text-main: #e5e5e5;
+    --text-muted: #737373;
+    --input-bg: #000000;
+}
+
+[data-theme="light"] {
+    --bg-dark: #f8fafc; 
+    --bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 100%);
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
     
-    body { 
-        font-family: 'Inter', system-ui, sans-serif; 
-        background: var(--bg-dark); 
-        background-image: var(--bg-gradient);
-        color: var(--text-main); 
-        margin: 0; 
-        min-height: 100vh;
-        -webkit-font-smoothing: antialiased;
-        transition: background 0.3s ease, color 0.3s ease;
-    }
+    --accent: #0f172a;
+    --accent-glow: rgba(15, 23, 42, 0.2);
+    --accent-text: #ffffff;
     
-    .glass-box { 
-        background: var(--glass-bg); 
-        backdrop-filter: blur(16px); 
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid var(--glass-border); 
-        border-radius: 16px; 
-        box-shadow: var(--glass-shadow);
-        transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --input-bg: rgba(255,255,255,0.8);
+}
+
+body { 
+    font-family: 'Inter', system-ui, sans-serif; 
+    background: var(--bg-dark); 
+    background-image: var(--bg-gradient);
+    color: var(--text-main); 
+    margin: 0; 
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.glass-box { 
+    background: var(--glass-bg); 
+    backdrop-filter: blur(16px); 
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border); 
+    border-radius: 16px; 
+    box-shadow: var(--glass-shadow);
+    transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 """
 
 UI_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{site_name}</title>
     <script>
         const savedTheme = localStorage.getItem('hub_theme') || 'black-white';
@@ -183,81 +198,54 @@ UI_HTML = """
     </script>
     <style>
         """ + COMMON_STYLE + """
-        .header { 
-            background: var(--glass-bg); 
-            backdrop-filter: blur(20px); 
-            border-bottom: 1px solid var(--glass-border); 
-            padding: 15px 30px; display: flex; 
-            justify-content: space-between; 
-            align-items: center; position: sticky; top: 0; z-index: 1000; 
-            box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; 
-        }
+        .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
         .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
         .header-controls { display: flex; align-items: center; gap: 15px; }
-        
         .badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
-        
         .theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; max-width: 140px; }
         .theme-select option { background: var(--bg-dark); color: var(--text-main); }
-        
         .logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
         .logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
-        
         .container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
-        
         .search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: 'Inter'; }
         .search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-        
         .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
         .breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
         .breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
         .breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-        
         .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        
         .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
         .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
         .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
         .file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
-        
         .file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
         .file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
         .file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
         .file-name:hover { color: var(--accent); }
-        
         .actions { display: flex; align-items: center; gap: 12px; }
-        
         .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); white-space: nowrap; }
         .btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
-        
         .btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
         .btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
-        
         .kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
         .kebab-btn:hover { background: var(--glass-border); }
-        
         .dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
         .dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: 'Inter'; margin-bottom: 2px; }
         .dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
         .dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
         .dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
         .dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
-        
         .show { display: block; animation: fadeIn 0.2s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
         .modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
         .modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
-        
         .tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
         .tree-item:hover { background: var(--glass-border); color: var(--text-main); }
         .tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
-        
         iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
-        
         @media (max-width: 768px) {
             .header { flex-direction: column; padding: 15px; gap: 15px; }
             .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -592,7 +580,7 @@ UI_HTML = """
                 dropText.style.display = 'none';
                 selFiles.style.display = 'block';
                 btnConfirm.style.display = 'block';
-                selFiles.innerHTML = pendingFiles.map(f => `📄 ${f.name} <span style="color:var(--text-muted); font-size:11px;">(${(f.size/1024/1024).toFixed(2)} MB)</span>`).join('<br>');
+                selFiles.innerHTML = pendingFiles.map(f => `📄 ${f.name} <span style="color:var(--text-muted); font-size:11px;">(${(f.size/1048576).toFixed(2)} MB)</span>`).join('<br>');
             }
 
             btnConfirm.onclick = (e) => {
@@ -646,60 +634,16 @@ LOGIN_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Access</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
-        
-        body { 
-            display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; margin: 0;
-            background: linear-gradient(45deg, #000000, #171717, #262626, #000000);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            font-family: 'Inter', system-ui, sans-serif; 
-        }
-        @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
-        
-        .login-card { 
-            padding: 40px; width: 90%; max-width: 340px; text-align: center; 
-            background: rgba(20, 20, 20, 0.6);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
-            border-radius: 20px;
-            position: relative; overflow: hidden;
-            box-sizing: border-box;
-        }
-        
-        .login-card::before {
-            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%);
-            z-index: -1; animation: pulse 6s ease-in-out infinite alternate;
-        }
-        @keyframes pulse { 0% {transform: scale(0.8);} 100% {transform: scale(1.2);} }
-
-        h2 { color: #fff; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; text-shadow: 0 0 20px rgba(255,255,255,0.2); word-break: break-word; }
-        
-        input { 
-            width: 100%; padding: 16px; margin: 0 0 25px 0; 
-            background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); 
-            color: white; border-radius: 12px; box-sizing: border-box; outline: none; 
-            font-size: 15px; text-align: center; letter-spacing: 4px; transition: 0.3s;
-            font-family: 'Inter';
-        }
-        input:focus { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); background: rgba(0,0,0,0.8); }
-        input::placeholder { letter-spacing: 2px; color: rgba(255,255,255,0.3); }
-        
-        button { 
-            width: 100%; padding: 16px; 
-            background: #ffffff; color: #000000; 
-            border: none; border-radius: 12px; cursor: pointer; 
-            font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;
-            box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: 0.3s;
-            font-family: 'Inter';
-        }
-        button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }
-    </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Access</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #050505; font-family: 'Inter', sans-serif; }
+.login-card { padding: 40px; width: 90%; max-width: 340px; text-align: center; background: rgba(20,20,20,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+h2 { color: #fff; letter-spacing: 2px; }
+input { width: 100%; padding: 16px; margin: 0 0 25px 0; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 12px; box-sizing: border-box; outline: none; text-align: center; letter-spacing: 4px; }
+button { width: 100%; padding: 16px; background: #fff; color: #000; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; text-transform: uppercase; }
+</style>
 </head>
 <body>
     <div class="login-card">
@@ -1086,7 +1030,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
-            # Read until the first boundary
             while remainbytes > 0:
                 line = self.rfile.readline()
                 remainbytes -= len(line)
@@ -1096,7 +1039,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             while remainbytes > 0:
                 filename = None
                 
-                # Parse headers of the current file part
                 while remainbytes > 0:
                     line = self.rfile.readline()
                     remainbytes -= len(line)
@@ -1107,7 +1049,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         filename = fn[0]
                         
                 if not filename:
-                    # Skip to the next boundary if no filename
                     while remainbytes > 0:
                         line = self.rfile.readline()
                         remainbytes -= len(line)
@@ -1117,7 +1058,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         break
                     continue
                     
-                # Write file content
                 out_path = os.path.join(curr, filename)
                 with open(out_path, 'wb') as f:
                     preline = self.rfile.readline()
@@ -1168,9 +1108,10 @@ def main():
         gp = input("Guest Password [1234]: ") or "1234"
         pt = input("Port [5000]: ") or "5000"
         sd = input("Storage Path [./uploads]: ") or "./uploads"
+        mf = input("Max Failed Logins before Ban [15]: ") or "15"
         
         with open(CONFIG_FILE, "w", encoding="utf-8") as f: 
-            f.write(f"SITE_NAME={sn}\nADMIN_PWD={ap}\nGUEST_PWD={gp}\nPORT={pt}\nUPLOAD_DIR={sd}\nMAX_FAILS=15\n")
+            f.write(f"SITE_NAME={sn}\nADMIN_PWD={ap}\nGUEST_PWD={gp}\nPORT={pt}\nUPLOAD_DIR={sd}\nMAX_FAILS={mf}\n")
             
         if not os.path.exists(sd): 
             os.makedirs(sd)
