@@ -373,18 +373,15 @@ UI_HTML = """
         }
         
         let selectedFiles = [];
-        
         function toggleSelection(e) {
             e.stopPropagation();
             updateBatchBar();
         }
-        
         function toggleAll(e) {
             let cbs = document.querySelectorAll('.file-cb');
             cbs.forEach(cb => cb.checked = e.target.checked);
             updateBatchBar();
         }
-        
         function updateBatchBar() {
             selectedFiles = Array.from(document.querySelectorAll('.file-cb:checked')).map(cb => cb.value);
             let bar = document.getElementById('batch-bar');
@@ -395,13 +392,9 @@ UI_HTML = """
                 bar.style.display = 'none';
             }
         }
-        
         function batchDelete() {
             if(confirm('Permanently delete ' + selectedFiles.length + ' items?')) {
-                fetch('/action', {
-                    method:'POST', 
-                    body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})
-                }).then(()=>location.reload());
+                fetch('/action', {method:'POST', body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})}).then(()=>location.reload());
             }
         }
         function batchMove() { openTreeModal('batch_move', selectedFiles.join('|')); }
@@ -455,12 +448,10 @@ UI_HTML = """
         }
         
         let treeAction = ''; let treeTarget = ''; let treeSelected = null;
-        
         function openTreeModal(act, tgt) {
             treeAction = act; treeTarget = tgt; treeSelected = null;
             let icon = act.includes('move') ? '✂️ Move ' : '📄 Copy ';
             let lbl = act.includes('batch_') ? selectedFiles.length + ' items' : tgt;
-            
             document.getElementById('tree-title').innerText = icon + lbl + " to...";
             document.getElementById('treeModal').style.display = 'flex';
             document.getElementById('tree-list').innerHTML = '<div style="color:var(--accent);text-align:center;padding:30px;font-weight:600;">Scanning Directories...</div>';
@@ -476,21 +467,21 @@ UI_HTML = """
                 document.getElementById('tree-list').innerHTML = h;
             });
         }
-        
         function selectTreeItem(el, path) {
             document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
             el.classList.add('selected');
             treeSelected = path === '/' ? '' : path.substring(1);
         }
-        
         function confirmTreeAction() {
             if(treeSelected === null) return alert('Please select a destination folder first.');
+            
             let params = {action: treeAction, dir: currentDir, dest: treeSelected};
             if(treeAction.startsWith('batch_')) {
                 params.targets = treeTarget;
             } else {
                 params.target = treeTarget;
             }
+            
             fetch('/action', {method:'POST', body:new URLSearchParams(params)}).then(()=>location.reload());
         }
 
@@ -507,10 +498,8 @@ UI_HTML = """
         function askPathAndFetch(action, target, extraParams = {}) {
             let cPath = prompt("Enter custom link path (leave empty for random):\\nOnly letters, numbers, dash, underscore allowed.", "");
             if(cPath === null) return;
-            
             let params = {action: action, target: target, dir: currentDir, custom_path: cPath};
             Object.assign(params, extraParams);
-            
             fetch('/action', {method:'POST', body: new URLSearchParams(params)})
             .then(r=>r.text()).then(l=>{
                 if(l === "EXISTS") alert("⚠️ This custom path already exists! Please try another one.");
@@ -522,6 +511,7 @@ UI_HTML = """
         function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) askPathAndFetch('share_limit', n, {limit:parseInt(limit)}); }
         function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) askPathAndFetch('share_pwd', n, {pwd:pwd}); }
         function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) askPathAndFetch('renew', n); }
+        
         function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
 
@@ -852,16 +842,23 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 return
                 
         if self.get_role() != "admin": return
-        q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]; curr = self.get_safe_path(q)
         
         if parsed.path == "/upload": 
+            q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]
+            curr = self.get_safe_path(q)
             self._handle_upload(curr)
             return
             
         elif parsed.path == "/action":
             l = int(self.headers.get('Content-Length', 0))
             data = urllib.parse.parse_qs(self.rfile.read(l).decode())
-            act, target = data.get('action',[''])[0], data.get('target',[''])[0]
+            
+            # رفع باگ زیرپوشه‌ها
+            q = data.get('dir', [''])[0]
+            curr = self.get_safe_path(q)
+            
+            act = data.get('action',[''])[0]
+            target = data.get('target',[''])[0]
             
             if act == 'get_logs':
                 content = ""
@@ -1074,7 +1071,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
-            # خواندن خطوط تا رسیدن به اولین boundary
+            # جستجو برای پیدا کردن اولین boundary
             while remainbytes > 0:
                 line = self.rfile.readline()
                 remainbytes -= len(line)
@@ -1084,7 +1081,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             while remainbytes > 0:
                 filename = None
                 
-                # پارس کردن هدرهای فایل فعلی
+                # خواندن هدرهای فایل فعلی
                 while remainbytes > 0:
                     line = self.rfile.readline()
                     remainbytes -= len(line)
@@ -1095,7 +1092,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         filename = fn[0]
                         
                 if not filename:
-                    # اسکیپ به boundary بعدی در صورت نبود اسم فایل
+                    # اگر اسم فایلی پیدا نشد برو سراغ قسمت بعدی
                     while remainbytes > 0:
                         line = self.rfile.readline()
                         remainbytes -= len(line)
@@ -1105,7 +1102,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         break
                     continue
                     
-                # نوشتن دیتای فایل
+                # شروع نوشتن فایل
                 out_path = os.path.join(curr, filename)
                 with open(out_path, 'wb') as f:
                     preline = self.rfile.readline()
@@ -1114,6 +1111,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         line = self.rfile.readline()
                         remainbytes -= len(line)
                         if boundary in line:
+                            # رسیدن به انتهای فایل فعلی
                             if preline.endswith(b'\r\n'):
                                 f.write(preline[:-2])
                             elif preline.endswith(b'\n'):
@@ -1126,6 +1124,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                             preline = line
                             
                 add_log(self.client_address[0], f"Uploaded File: {filename}")
+                
+                # اگر این آخرین بخش بود، کلاً خارج شو
                 if b'--' + boundary + b'--' in line:
                     break
                     
@@ -1177,4 +1177,5 @@ def main():
             print(f"[*] Hub is running on port {cfg['PORT']}...")
             h.serve_forever()
 
-if __name__ == "__main__": main()
+if __name__ == "__main__": 
+    main()
