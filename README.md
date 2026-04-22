@@ -44,7 +44,7 @@ A powerful, highly secure, and visually stunning web-based file manager and stre
 
 Deploy Black Hub on your Linux server in seconds using our automated installation script:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main/install.sh | tr -d '\r')
+bash <(curl -sL https://raw.githubusercontent.com/saeederamy/black-hub/main/install.sh | tr -d '\r')
 ```
 
 ### 💻 Linux CLI Management
