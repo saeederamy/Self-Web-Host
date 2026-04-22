@@ -22,6 +22,9 @@ LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
 NODL_FILE = "no_download.json"
 
+# لیست سفید: این آی‌پی‌ها هرگز بن نمی‌شوند (جلوگیری از باگ Nginx)
+WHITELIST_IPS = ['127.0.0.1', 'localhost', '::1']
+
 # --- سیستم محاسبه حجم در پس‌زمینه (برای جلوگیری از کندی سایت) ---
 _HUB_SIZE_CACHE = 0
 
@@ -38,7 +41,6 @@ def calculate_dir_size_bg(path):
             _HUB_SIZE_CACHE = sz
         except: 
             pass
-        # آپدیت حجم هر 15 ثانیه بدون درگیر کردن کاربر
         time.sleep(15)
 
 def load_json(p): 
@@ -54,22 +56,30 @@ def add_log(ip, act):
     open(LOG_FILE, "w", encoding="utf-8").writelines(lines[-100:])
 
 def check_ip(ip):
+    if ip in WHITELIST_IPS: return False
     b = load_json(BLOCK_FILE)
     return ip in b and b[ip].get('block_until', 0) > time.time()
 
 def rec_fail(ip, mx):
-    b = load_json(BLOCK_FILE); now = time.time()
-    if ip not in b: b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
+    if ip in WHITELIST_IPS: return
+    b = load_json(BLOCK_FILE)
+    now = time.time()
+    if ip not in b: 
+        b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
     else:
         b[ip]['fails'] = 1 if now - b[ip]['last'] > 86400 else b[ip]['fails'] + 1
         b[ip]['last'] = now
+        
     if b[ip]['fails'] >= mx: 
-        b[ip]['block_until'] = now + 86400; add_log(ip, "BANNED FOR 24H")
+        b[ip]['block_until'] = now + 86400
+        add_log(ip, "BANNED FOR 24H")
     save_json(b, BLOCK_FILE)
 
 def clr_fail(ip):
     b = load_json(BLOCK_FILE)
-    if ip in b: del b[ip]; save_json(b, BLOCK_FILE)
+    if ip in b: 
+        del b[ip]
+        save_json(b, BLOCK_FILE)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE): return None
@@ -94,21 +104,17 @@ COMMON_STYLE = """
         --glass-bg: rgba(255, 255, 255, 0.03);
         --glass-border: rgba(255, 255, 255, 0.1);
         --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-        
         --accent: #ffffff;
         --accent-glow: rgba(255, 255, 255, 0.3);
         --accent-text: #000000;
-        
         --neon-red: #ef4444;
         --neon-red-glow: rgba(239, 68, 68, 0.4);
         --neon-orange: #f97316;
         --neon-orange-glow: rgba(249, 115, 22, 0.4);
-        
         --text-main: #f8fafc;
         --text-muted: #94a3b8;
         --input-bg: rgba(0,0,0,0.4);
     }
-
     [data-theme="black-blue"] {
         --bg-dark: #0a0a0f; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0f 70%);
@@ -116,7 +122,6 @@ COMMON_STYLE = """
         --accent-glow: rgba(59, 130, 246, 0.4);
         --accent-text: #ffffff;
     }
-
     [data-theme="black-red"] {
         --bg-dark: #0f0000; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #2a0808 0%, #0f0000 70%);
@@ -124,7 +129,6 @@ COMMON_STYLE = """
         --accent-glow: rgba(239, 68, 68, 0.4);
         --accent-text: #ffffff;
     }
-    
     [data-theme="pure-black"] {
         --bg-dark: #000000; 
         --bg-gradient: none;
@@ -138,23 +142,19 @@ COMMON_STYLE = """
         --text-muted: #737373;
         --input-bg: #000000;
     }
-
     [data-theme="light"] {
         --bg-dark: #f8fafc; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 100%);
         --glass-bg: rgba(255, 255, 255, 0.6);
         --glass-border: rgba(0, 0, 0, 0.1);
         --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-        
         --accent: #0f172a;
         --accent-glow: rgba(15, 23, 42, 0.2);
         --accent-text: #ffffff;
-        
         --text-main: #0f172a;
         --text-muted: #475569;
         --input-bg: rgba(255,255,255,0.8);
     }
-    
     body { 
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background: var(--bg-dark); 
@@ -165,7 +165,6 @@ COMMON_STYLE = """
         -webkit-font-smoothing: antialiased;
         transition: background 0.3s ease, color 0.3s ease;
     }
-    
     .glass-box { 
         background: var(--glass-bg); 
         backdrop-filter: blur(16px); 
@@ -175,7 +174,6 @@ COMMON_STYLE = """
         box-shadow: var(--glass-shadow);
         transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
     }
-    
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
@@ -192,70 +190,51 @@ UI_HTML = """<!DOCTYPE html>
 .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
 .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
 .header-controls { display: flex; align-items: center; gap: 15px; }
-
 .badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
-
 .theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: inherit; outline: none; cursor: pointer; max-width: 140px; }
 .theme-select option { background: var(--bg-dark); color: var(--text-main); }
-
 .logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
 .logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
-
 .container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
-
 .search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: inherit; }
 .search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-
 .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
 .breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
 .breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
 .breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-
 .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-
 .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
 .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
 .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
 .file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
-
 .file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
 .file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
 .file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
 .file-name:hover { color: var(--accent); }
-
 .actions { display: flex; align-items: center; gap: 12px; }
-
 .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; backdrop-filter: blur(5px); white-space: nowrap; }
 .btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
-
 .btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
 .btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
-
 .kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
 .kebab-btn:hover { background: var(--glass-border); }
-
 .dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
 .dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: inherit; margin-bottom: 2px; }
 .dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
 .dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
 .dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
 .dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
-
 .show { display: block; animation: fadeIn 0.2s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
 .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
 .modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
 .modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
-
 .tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
 .tree-item:hover { background: var(--glass-border); color: var(--text-main); }
 .tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
-
 iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
-
 @media (max-width: 768px) {
     .header { flex-direction: column; padding: 15px; gap: 15px; }
     .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -509,7 +488,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
         function shareItem(n) { askPathAndFetch('share', n); }
         function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) askPathAndFetch('share_limit', n, {limit:parseInt(limit)}); }
         function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) askPathAndFetch('share_pwd', n, {pwd:pwd}); }
-        function renewItem(n) { if(confirm('Generate a new link? (Old link will expire)')) askPathAndFetch('renew', n); }
+        function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) askPathAndFetch('renew', n); }
         
         function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
@@ -534,7 +513,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             fetch('/action', {method:'POST', body: new URLSearchParams({action:'save_text', target:n, dir:currentDir, content:t}) }).then(()=>{ document.getElementById('editModal').style.display='none'; location.reload(); });
         }
 
-        // --- بخش فوق امن آپلود با روابع گلوبال ---
+        // --- بخش ویژه و قدرتمند آپلود تکه‌تکه (Chunking) برای دور زدن فیلترینگ و CDN ایرانی ---
         window.pendingFiles = [];
         
         window.handleFilesSelect = function(files) {
@@ -544,7 +523,6 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             document.getElementById('drop-text').style.display = 'none';
             document.getElementById('selected-files').style.display = 'block';
             document.getElementById('btn-start-upload').style.display = 'block';
-            document.getElementById('btn-confirm-publish').style.display = 'none';
             document.getElementById('progress-wrapper').style.display = 'none';
             document.getElementById('progress-bar').style.width = '0%';
             
@@ -554,47 +532,62 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             }).join('<br>');
         };
 
-        window.startHubUpload = function(e) {
+        window.startHubUpload = async function(e) {
             e.preventDefault(); 
             e.stopPropagation();
             if(window.pendingFiles.length === 0) return;
             
             let btn = document.getElementById('btn-start-upload');
             btn.style.pointerEvents = 'none';
-            btn.innerText = '⏳ Uploading... Please wait';
+            btn.innerText = '⏳ Bypassing CDN (Chunked Upload)...';
             document.getElementById('selected-files').style.opacity = '0.5';
-            
-            let fd = new FormData(); 
-            for(let i=0; i<window.pendingFiles.length; i++) {
-                fd.append('file', window.pendingFiles[i]);
-            }
             
             document.getElementById('progress-wrapper').style.display = 'block';
             let progBar = document.getElementById('progress-bar');
             
-            let xhr = new XMLHttpRequest(); 
-            xhr.open('POST', '/upload?dir=' + encodeURIComponent(currentDir), true);
+            // سایز هر تکه: 1 مگابایت. (پارس‌پک و فایروال فایل‌های بالاتر از این را ممکن است قطع کنند)
+            const CHUNK_SIZE = 1024 * 1024; 
             
-            xhr.upload.addEventListener('progress', function(ev) { 
-                if(ev.lengthComputable) {
-                    let percent = Math.round((ev.loaded / ev.total) * 100);
-                    progBar.style.width = percent + '%'; 
-                    progBar.style.boxShadow = "0 0 15px var(--accent)";
+            try {
+                for(let i = 0; i < window.pendingFiles.length; i++) {
+                    let file = window.pendingFiles[i];
+                    let totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                    if(totalChunks === 0) totalChunks = 1; // برای فایل‌های خالی
+                    
+                    for(let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+                        let start = chunkIdx * CHUNK_SIZE;
+                        let end = Math.min(start + CHUNK_SIZE, file.size);
+                        let chunk = file.slice(start, end);
+                        
+                        let url = '/upload_chunk?dir=' + encodeURIComponent(currentDir) + 
+                                  '&filename=' + encodeURIComponent(file.name) + 
+                                  '&chunk=' + chunkIdx + '&total=' + totalChunks;
+                                  
+                        let response = await fetch(url, {
+                            method: 'POST',
+                            body: chunk
+                        });
+                        
+                        if(!response.ok) throw new Error('Network or CDN dropped the chunk');
+                        
+                        // آپدیت نوار پیشرفت نرم
+                        let fileProgress = (chunkIdx + 1) / totalChunks;
+                        let totalProgress = ((i + fileProgress) / window.pendingFiles.length) * 100;
+                        progBar.style.width = totalProgress + '%';
+                        progBar.style.boxShadow = "0 0 15px var(--accent)";
+                    }
                 }
-            });
-            
-            xhr.onload = function() {
-                btn.style.display = 'none';
-                document.getElementById('btn-confirm-publish').style.display = 'block';
-            };
-            
-            xhr.onerror = function() {
-                alert('Upload connection failed! Check your network.');
+                
+                // وقتی صد درصد تمام شد، اتوماتیک سایت رفرش میشه تا فایل‌ها رو ببینی
+                btn.innerText = '✅ Completed!';
+                setTimeout(() => { location.reload(); }, 500);
+                
+            } catch(err) {
+                alert('Upload failed! CDN dropped the connection or network error.');
                 btn.innerText = '❌ Failed (Retry)';
                 btn.style.pointerEvents = 'auto';
-            };
-            
-            xhr.send(fd);
+                document.getElementById('selected-files').style.opacity = '1';
+            }
         };
     </script>
 </body>
@@ -692,6 +685,13 @@ def get_preview_type(filename):
 class FileHubHandler(http.server.BaseHTTPRequestHandler):
     CONFIG = {}
     
+    def get_client_ip(self):
+        if "X-Forwarded-For" in self.headers:
+            return self.headers["X-Forwarded-For"].split(",")[0].strip()
+        if "X-Real-IP" in self.headers:
+            return self.headers["X-Real-IP"].strip()
+        return self.client_address[0]
+        
     def address_string(self):
         return self.client_address[0]
 
@@ -711,7 +711,9 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return "" if r == "." else r
 
     def do_GET(self):
-        if check_ip(self.client_address[0]):
+        client_ip = self.get_client_ip()
+        
+        if check_ip(client_ip):
             self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;margin:0;padding:20px;box-sizing:border-box;"><div class="glass-box" style="padding:40px;text-align:center;border-color:var(--neon-red);box-shadow:0 0 30px var(--neon-red-glow);max-width:400px;width:100%;"><h1 style="color:var(--neon-red);margin:0;font-weight:800;letter-spacing:2px;word-break:break-word;">🚫 ACCESS DENIED</h1><p style="color:var(--text-muted);margin-top:15px;font-size:15px;">Your IP has been temporarily blocked for 24 hours.</p></div></body>')
             return
 
@@ -736,7 +738,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         
                 target = self.get_safe_path(target_rel)
                 if os.path.isfile(target):
-                    add_log(self.client_address[0], f"Public Link Download: {target_rel}")
+                    add_log(client_ip, f"Public Link Download: {target_rel}")
                     if limit > 0:
                         lns[tk]['limit'] -= 1
                         if lns[tk]['limit'] <= 0: del lns[tk]
@@ -757,7 +759,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[5:]))
             if not self.check_item_lock(self.get_rel(target)): return
             if os.path.isdir(target):
-                add_log(self.client_address[0], f"Downloaded ZIP: {self.get_rel(target)}")
+                add_log(client_ip, f"Downloaded ZIP: {self.get_rel(target)}")
                 tmp_base = tempfile.mktemp(); shutil.make_archive(tmp_base, 'zip', target); zip_path = tmp_base + '.zip'
                 self._send_file(zip_path, dl=True, name=os.path.basename(target)+".zip"); os.remove(zip_path)
             return
@@ -777,11 +779,11 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             if os.path.isfile(target): 
-                add_log(self.client_address[0], f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
+                add_log(client_ip, f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
                 self._send_file(target, dl=is_dl)
                 
         elif parsed.path == "/logout":
-            add_log(self.client_address[0], "Logged Out")
+            add_log(client_ip, "Logged Out")
             self.send_response(302)
             self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly")
             self.send_header("Location", "/")
@@ -799,16 +801,47 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     return False
         return True
 
+    # --- هندلر دریافت قطعات آپلود در بک‌اند ---
+    def _handle_chunk_upload(self, curr, parsed):
+        client_ip = self.get_client_ip()
+        query = urllib.parse.parse_qs(parsed.query)
+        filename = query.get('filename', [''])[0]
+        chunk_idx = int(query.get('chunk', ['0'])[0])
+        total_chunks = int(query.get('total', ['1'])[0])
+        
+        out_path = os.path.join(curr, filename)
+        rem = int(self.headers.get('Content-Length', 0))
+        
+        mode = 'wb' if chunk_idx == 0 else 'ab'
+        try:
+            with open(out_path, mode) as f:
+                while rem > 0:
+                    read_size = min(rem, 65536)
+                    data = self.rfile.read(read_size)
+                    if not data: break
+                    f.write(data)
+                    rem -= len(data)
+                    
+            if chunk_idx == total_chunks - 1:
+                add_log(client_ip, f"Uploaded File (CDN Bypassed): {filename}")
+            
+            self.send_response(200)
+            self.end_headers()
+        except Exception as e:
+            print("Chunk Upload Error:", e)
+            self.send_error(500)
+
     def do_POST(self):
-        if check_ip(self.client_address[0]): self.send_error(403); return
+        client_ip = self.get_client_ip()
+        if check_ip(client_ip): self.send_error(403); return
         parsed = urllib.parse.urlparse(self.path)
         
         if parsed.path == "/login":
             l = int(self.headers.get('Content-Length', 0))
             pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
             if pwd == self.CONFIG['ADMIN_PWD'] or pwd == self.CONFIG['GUEST_PWD']:
-                clr_fail(self.client_address[0])
-                add_log(self.client_address[0], "Login Successful")
+                clr_fail(client_ip)
+                add_log(client_ip, "Login Successful")
                 tk = hashlib.sha256(pwd.encode()).hexdigest()
                 self.send_response(302)
                 self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly")
@@ -816,16 +849,17 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
             else: 
                 max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
-                rec_fail(self.client_address[0], max_fails)
+                rec_fail(client_ip, max_fails)
                 self.send_error(401)
                 return
                 
         if self.get_role() != "admin": return
         
-        if parsed.path == "/upload": 
+        # --- روتینگ دریافت Chunk ---
+        if parsed.path == "/upload_chunk": 
             q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]
             curr = self.get_safe_path(q)
-            self._handle_upload(curr)
+            self._handle_chunk_upload(curr, parsed)
             return
             
         elif parsed.path == "/action":
@@ -857,7 +891,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(dirs).encode()); return
 
             if act == 'clear_logs':
-                open(LOG_FILE, 'w').close(); add_log(self.client_address[0], "Logs cleared"); self.send_response(200); self.end_headers(); return
+                open(LOG_FILE, 'w').close(); add_log(client_ip, "Logs cleared"); self.send_response(200); self.end_headers(); return
             
             tp = os.path.join(curr, target); rel = self.get_rel(tp)
             
@@ -949,15 +983,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
         
-        # کادر آپلود با توابع جاوا اسکریپت کاملا خطی و امن
-        up_area = f'''<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('file-input').click();" ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';" ondragleave="event.preventDefault(); this.style.borderColor='var(--glass-border)';" ondrop="event.preventDefault(); this.style.borderColor='var(--glass-border)'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;">
-            <p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p>
-            <input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)">
-            <div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div>
-            <button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button>
-            <button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button>
-            <div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div>
-        </div>''' if role == 'admin' else ''
+        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
         
         disk_html = ""
         if role == 'admin':
@@ -1001,7 +1027,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
             stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
             
-            # پاکسازی اسم فایل برای جلوگیری از خطای جاوا اسکریپت (حذف کوتیشن در توابع)
             f_safe_js = f.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
             f_html = html.escape(f)
             
@@ -1051,78 +1076,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                           
         self._send_resp(html_out)
 
-    def _handle_upload(self, curr):
-        try:
-            content_type = self.headers.get('Content-Type')
-            if not content_type or 'boundary=' not in content_type:
-                self.send_error(400)
-                return
-                
-            boundary = content_type.split('boundary=')[1].encode()
-            remainbytes = int(self.headers.get('Content-Length', 0))
-            
-            # خواندن خطوط تا رسیدن به اولین boundary
-            while remainbytes > 0:
-                line = self.rfile.readline()
-                remainbytes -= len(line)
-                if boundary in line:
-                    break
-                    
-            while remainbytes > 0:
-                filename = None
-                
-                # پارس کردن هدرهای فایل فعلی
-                while remainbytes > 0:
-                    line = self.rfile.readline()
-                    remainbytes -= len(line)
-                    if line == b'\r\n':
-                        break
-                    fn = re.findall(r'filename="(.*?)"', line.decode('utf-8', 'ignore'))
-                    if fn:
-                        filename = fn[0]
-                        
-                if not filename:
-                    # اسکیپ به boundary بعدی در صورت نبود اسم فایل
-                    while remainbytes > 0:
-                        line = self.rfile.readline()
-                        remainbytes -= len(line)
-                        if boundary in line:
-                            break
-                    if b'--' + boundary + b'--' in line:
-                        break
-                    continue
-                    
-                # نوشتن دیتای فایل
-                out_path = os.path.join(curr, filename)
-                with open(out_path, 'wb') as f:
-                    preline = self.rfile.readline()
-                    remainbytes -= len(preline)
-                    while remainbytes > 0:
-                        line = self.rfile.readline()
-                        remainbytes -= len(line)
-                        if boundary in line:
-                            # رسیدن به انتهای فایل فعلی
-                            if preline.endswith(b'\r\n'):
-                                f.write(preline[:-2])
-                            elif preline.endswith(b'\n'):
-                                f.write(preline[:-1])
-                            else:
-                                f.write(preline)
-                            break
-                        else:
-                            f.write(preline)
-                            preline = line
-                            
-                add_log(self.client_address[0], f"Uploaded File: {filename}")
-                if b'--' + boundary + b'--' in line:
-                    break
-                    
-            self.send_response(200)
-            self.end_headers()
-        except Exception as e:
-            print("Upload Error:", e)
-            self.send_error(500)
-        
     def _send_file(self, p, dl=False, name=None):
         self.send_response(200); self.send_header("Content-Type", "application/octet-stream")
         if dl: self.send_header("Content-Disposition", f'attachment; filename="{name or os.path.basename(p)}"')
@@ -1161,11 +1114,11 @@ def main():
             print("[!] No config found! Run Setup first.")
             return
             
-        # روشن کردن سیستم کش دیسک برای سرعت در پس‌زمینه
+        # پورت به صورت قطعی روی 0.0.0.0 تنظیم شد تا با IP خام هم باز شود
         threading.Thread(target=calculate_dir_size_bg, args=(cfg['UPLOAD_DIR'],), daemon=True).start()
             
         FileHubHandler.CONFIG = cfg
-        with socketserver.ThreadingTCPServer(("", int(cfg['PORT'])), FileHubHandler) as h:
+        with socketserver.ThreadingTCPServer(("0.0.0.0", int(cfg['PORT'])), FileHubHandler) as h:
             print(f"[*] Hub is running on port {cfg['PORT']}...")
             h.serve_forever()
 
