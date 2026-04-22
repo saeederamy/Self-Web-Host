@@ -22,6 +22,9 @@ LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
 NODL_FILE = "no_download.json"
 
+# لیست سفید: این آی‌پی‌ها هرگز بن نمی‌شوند
+WHITELIST_IPS = ['127.0.0.1', 'localhost', '::1']
+
 # --- سیستم محاسبه حجم در پس‌زمینه (برای جلوگیری از کندی سایت) ---
 _HUB_SIZE_CACHE = 0
 
@@ -38,7 +41,6 @@ def calculate_dir_size_bg(path):
             _HUB_SIZE_CACHE = sz
         except: 
             pass
-        # آپدیت حجم هر 15 ثانیه بدون درگیر کردن کاربر
         time.sleep(15)
 
 def load_json(p): 
@@ -54,22 +56,30 @@ def add_log(ip, act):
     open(LOG_FILE, "w", encoding="utf-8").writelines(lines[-100:])
 
 def check_ip(ip):
+    if ip in WHITELIST_IPS: return False
     b = load_json(BLOCK_FILE)
     return ip in b and b[ip].get('block_until', 0) > time.time()
 
 def rec_fail(ip, mx):
-    b = load_json(BLOCK_FILE); now = time.time()
-    if ip not in b: b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
+    if ip in WHITELIST_IPS: return
+    b = load_json(BLOCK_FILE)
+    now = time.time()
+    if ip not in b: 
+        b[ip] = {'fails': 1, 'last': now, 'block_until': 0}
     else:
         b[ip]['fails'] = 1 if now - b[ip]['last'] > 86400 else b[ip]['fails'] + 1
         b[ip]['last'] = now
+        
     if b[ip]['fails'] >= mx: 
-        b[ip]['block_until'] = now + 86400; add_log(ip, "BANNED FOR 24H")
+        b[ip]['block_until'] = now + 86400
+        add_log(ip, "BANNED FOR 24H")
     save_json(b, BLOCK_FILE)
 
 def clr_fail(ip):
     b = load_json(BLOCK_FILE)
-    if ip in b: del b[ip]; save_json(b, BLOCK_FILE)
+    if ip in b: 
+        del b[ip]
+        save_json(b, BLOCK_FILE)
 
 def load_config():
     if not os.path.exists(CONFIG_FILE): return None
@@ -487,8 +497,8 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
         function clearLogs() { if(confirm('Clear all system logs?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'clear_logs'}) }).then(()=>location.reload()); }
         function createFolder() { let n = prompt("New Folder Name:"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkdir', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function createFile() { let n = prompt("New File Name (e.g. script.py):"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkfile', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function deleteItem(n) { if(confirm('Permanently delete?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function renameItem(n) { let nn = prompt("Rename to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
+        function deleteItem(n) { if(confirm('Permanently delete ' + n + '?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function renameItem(n) { let nn = prompt("Rename " + n + " to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
         function moveItem(n) { openTreeModal('move', n); }
         function copyItem(n) { openTreeModal('copy', n); }
         function lockItem(n) { let pwd = prompt("Set Lock Password (leave empty to remove lock):"); if(pwd !== null) fetch('/action', {method:'POST', body: new URLSearchParams({action:'lock_item', target:n, dir:currentDir, pwd:pwd}) }).then(()=>location.reload()); }
@@ -509,7 +519,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
         function shareItem(n) { askPathAndFetch('share', n); }
         function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) askPathAndFetch('share_limit', n, {limit:parseInt(limit)}); }
         function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) askPathAndFetch('share_pwd', n, {pwd:pwd}); }
-        function renewItem(n) { if(confirm('Generate a new link? (Old link will expire)')) askPathAndFetch('renew', n); }
+        function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) askPathAndFetch('renew', n); }
         
         function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
@@ -692,6 +702,13 @@ def get_preview_type(filename):
 class FileHubHandler(http.server.BaseHTTPRequestHandler):
     CONFIG = {}
     
+    def get_client_ip(self):
+        if "X-Forwarded-For" in self.headers:
+            return self.headers["X-Forwarded-For"].split(",")[0].strip()
+        if "X-Real-IP" in self.headers:
+            return self.headers["X-Real-IP"].strip()
+        return self.client_address[0]
+        
     def address_string(self):
         return self.client_address[0]
 
@@ -711,7 +728,9 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return "" if r == "." else r
 
     def do_GET(self):
-        if check_ip(self.client_address[0]):
+        client_ip = self.get_client_ip()
+        
+        if check_ip(client_ip):
             self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;margin:0;padding:20px;box-sizing:border-box;"><div class="glass-box" style="padding:40px;text-align:center;border-color:var(--neon-red);box-shadow:0 0 30px var(--neon-red-glow);max-width:400px;width:100%;"><h1 style="color:var(--neon-red);margin:0;font-weight:800;letter-spacing:2px;word-break:break-word;">🚫 ACCESS DENIED</h1><p style="color:var(--text-muted);margin-top:15px;font-size:15px;">Your IP has been temporarily blocked for 24 hours.</p></div></body>')
             return
 
@@ -736,7 +755,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         
                 target = self.get_safe_path(target_rel)
                 if os.path.isfile(target):
-                    add_log(self.client_address[0], f"Public Link Download: {target_rel}")
+                    add_log(client_ip, f"Public Link Download: {target_rel}")
                     if limit > 0:
                         lns[tk]['limit'] -= 1
                         if lns[tk]['limit'] <= 0: del lns[tk]
@@ -757,7 +776,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             target = self.get_safe_path(urllib.parse.unquote(parsed.path[5:]))
             if not self.check_item_lock(self.get_rel(target)): return
             if os.path.isdir(target):
-                add_log(self.client_address[0], f"Downloaded ZIP: {self.get_rel(target)}")
+                add_log(client_ip, f"Downloaded ZIP: {self.get_rel(target)}")
                 tmp_base = tempfile.mktemp(); shutil.make_archive(tmp_base, 'zip', target); zip_path = tmp_base + '.zip'
                 self._send_file(zip_path, dl=True, name=os.path.basename(target)+".zip"); os.remove(zip_path)
             return
@@ -777,11 +796,11 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 return
 
             if os.path.isfile(target): 
-                add_log(self.client_address[0], f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
+                add_log(client_ip, f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
                 self._send_file(target, dl=is_dl)
                 
         elif parsed.path == "/logout":
-            add_log(self.client_address[0], "Logged Out")
+            add_log(client_ip, "Logged Out")
             self.send_response(302)
             self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly")
             self.send_header("Location", "/")
@@ -800,15 +819,16 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return True
 
     def do_POST(self):
-        if check_ip(self.client_address[0]): self.send_error(403); return
+        client_ip = self.get_client_ip()
+        if check_ip(client_ip): self.send_error(403); return
         parsed = urllib.parse.urlparse(self.path)
         
         if parsed.path == "/login":
             l = int(self.headers.get('Content-Length', 0))
             pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
             if pwd == self.CONFIG['ADMIN_PWD'] or pwd == self.CONFIG['GUEST_PWD']:
-                clr_fail(self.client_address[0])
-                add_log(self.client_address[0], "Login Successful")
+                clr_fail(client_ip)
+                add_log(client_ip, "Login Successful")
                 tk = hashlib.sha256(pwd.encode()).hexdigest()
                 self.send_response(302)
                 self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly")
@@ -816,7 +836,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
             else: 
                 max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
-                rec_fail(self.client_address[0], max_fails)
+                rec_fail(client_ip, max_fails)
                 self.send_error(401)
                 return
                 
@@ -857,7 +877,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(dirs).encode()); return
 
             if act == 'clear_logs':
-                open(LOG_FILE, 'w').close(); add_log(self.client_address[0], "Logs cleared"); self.send_response(200); self.end_headers(); return
+                open(LOG_FILE, 'w').close(); add_log(client_ip, "Logs cleared"); self.send_response(200); self.end_headers(); return
             
             tp = os.path.join(curr, target); rel = self.get_rel(tp)
             
@@ -949,15 +969,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
         
-        # کادر آپلود با توابع جاوا اسکریپت کاملا خطی و امن
-        up_area = f'''<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('file-input').click();" ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';" ondragleave="event.preventDefault(); this.style.borderColor='var(--glass-border)';" ondrop="event.preventDefault(); this.style.borderColor='var(--glass-border)'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;">
-            <p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p>
-            <input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)">
-            <div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div>
-            <button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button>
-            <button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button>
-            <div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div>
-        </div>''' if role == 'admin' else ''
+        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
         
         disk_html = ""
         if role == 'admin':
@@ -1001,7 +1013,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
             stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
             
-            # پاکسازی اسم فایل برای جلوگیری از خطای جاوا اسکریپت (حذف کوتیشن در توابع)
             f_safe_js = f.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
             f_html = html.escape(f)
             
@@ -1053,6 +1064,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
 
     def _handle_upload(self, curr):
         try:
+            client_ip = self.get_client_ip()
             content_type = self.headers.get('Content-Type')
             if not content_type or 'boundary=' not in content_type:
                 self.send_error(400)
@@ -1113,7 +1125,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                             f.write(preline)
                             preline = line
                             
-                add_log(self.client_address[0], f"Uploaded File: {filename}")
+                add_log(client_ip, f"Uploaded File: {filename}")
                 if b'--' + boundary + b'--' in line:
                     break
                     
