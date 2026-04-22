@@ -13,6 +13,7 @@ import datetime
 import tempfile
 import time
 import html
+import threading
 
 CONFIG_FILE = "fileserver.conf"
 LINKS_FILE = "public_links.json"
@@ -21,27 +22,24 @@ LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
 NODL_FILE = "no_download.json"
 
-# --- سیستم کش برای سرعت بخشیدن به لود سایت ---
-_DIR_SIZE_CACHE = {'time': 0, 'size': 0}
+# --- سیستم محاسبه حجم در پس‌زمینه (برای جلوگیری از کندی سایت) ---
+_HUB_SIZE_CACHE = 0
 
-def get_hub_size(path):
-    global _DIR_SIZE_CACHE
-    now = time.time()
-    # محاسبه مجدد حجم هارد فقط هر 15 ثانیه یک‌بار انجام می‌شود تا سایت همیشه پرسرعت باشد
-    if now - _DIR_SIZE_CACHE['time'] < 15: 
-        return _DIR_SIZE_CACHE['size']
-    sz = 0
-    try:
-        for r, _, fs in os.walk(path):
-            for n in fs:
-                fp = os.path.join(r, n)
-                if not os.path.islink(fp): 
-                    sz += os.path.getsize(fp)
-        _DIR_SIZE_CACHE['time'] = now
-        _DIR_SIZE_CACHE['size'] = sz
-    except: 
-        pass
-    return _DIR_SIZE_CACHE['size']
+def calculate_dir_size_bg(path):
+    global _HUB_SIZE_CACHE
+    while True:
+        sz = 0
+        try:
+            for r, _, fs in os.walk(path):
+                for n in fs:
+                    fp = os.path.join(r, n)
+                    if not os.path.islink(fp): 
+                        sz += os.path.getsize(fp)
+            _HUB_SIZE_CACHE = sz
+        except: 
+            pass
+        # آپدیت حجم هر 15 ثانیه بدون درگیر کردن کاربر
+        time.sleep(15)
 
 def load_json(p): 
     return json.load(open(p, 'r', encoding='utf-8')) if os.path.exists(p) else {}
@@ -90,8 +88,6 @@ def format_size(size):
 def is_locked(t_rel, l_path): return t_rel == l_path or t_rel.startswith(l_path + "/")
 
 COMMON_STYLE = """
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
-    
     :root {
         --bg-dark: #0a0a0a; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #1f1f1f 0%, #0a0a0a 70%);
@@ -160,7 +156,7 @@ COMMON_STYLE = """
     }
     
     body { 
-        font-family: 'Inter', system-ui, sans-serif; 
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background: var(--bg-dark); 
         background-image: var(--bg-gradient);
         color: var(--text-main); 
@@ -186,102 +182,96 @@ COMMON_STYLE = """
     ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 """
 
-UI_HTML = """
-<!DOCTYPE html>
+UI_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{site_name}</title>
-    <script>
-        const savedTheme = localStorage.getItem('hub_theme') || 'black-white';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-    </script>
-    <style>
-        """ + COMMON_STYLE + """
-        .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-        .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
-        .header-controls { display: flex; align-items: center; gap: 15px; }
-        
-        .badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
-        
-        .theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: 'Inter'; outline: none; cursor: pointer; max-width: 140px; }
-        .theme-select option { background: var(--bg-dark); color: var(--text-main); }
-        
-        .logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
-        .logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
-        
-        .container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
-        
-        .search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: 'Inter'; }
-        .search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-        
-        .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
-        .breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
-        .breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
-        .breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-        
-        .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        
-        .file-list { } 
-        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
-        .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
-        .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
-        .file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
-        
-        .file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
-        .file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
-        .file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
-        .file-name:hover { color: var(--accent); }
-        
-        .actions { display: flex; align-items: center; gap: 12px; }
-        
-        .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: 'Inter'; backdrop-filter: blur(5px); white-space: nowrap; }
-        .btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
-        
-        .btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
-        .btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
-        
-        .kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
-        .kebab-btn:hover { background: var(--glass-border); }
-        
-        .dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
-        .dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: 'Inter'; margin-bottom: 2px; }
-        .dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
-        .dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
-        .dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
-        .dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
-        
-        .show { display: block; animation: fadeIn 0.2s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
-        .modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
-        .modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
-        
-        .tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
-        .tree-item:hover { background: var(--glass-border); color: var(--text-main); }
-        .tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
-        
-        iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
-        
-        @media (max-width: 768px) {
-            .header { flex-direction: column; padding: 15px; gap: 15px; }
-            .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-            .container { padding: 15px 12px; }
-            .file-meta { display: none; }
-            .file-item { padding: 12px 15px; flex-wrap: wrap; }
-            .actions { width: auto; justify-content: flex-end; }
-            .file-info { width: 100%; margin-bottom: 5px; }
-            .dropdown-content { right: 15px; top: 50px; }
-            .nav-row { flex-direction: column; align-items: stretch; }
-            .nav-buttons { justify-content: flex-start; }
-            .btn { padding: 8px 12px; font-size: 12px; }
-            .search-box { padding: 12px 15px; margin-bottom: 15px; }
-            .modal-content { width: 95%; height: 90%; }
-        }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{site_name}</title>
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('hub_theme') || 'black-white');</script>
+<style>
+""" + COMMON_STYLE + """
+.header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
+.logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
+.header-controls { display: flex; align-items: center; gap: 15px; }
+
+.badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
+
+.theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: inherit; outline: none; cursor: pointer; max-width: 140px; }
+.theme-select option { background: var(--bg-dark); color: var(--text-main); }
+
+.logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
+.logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
+
+.search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: inherit; }
+.search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+
+.nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
+.breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
+.breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
+.breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
+
+.nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+.file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
+.file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
+.file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
+.file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
+
+.file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
+.file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
+.file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
+.file-name:hover { color: var(--accent); }
+
+.actions { display: flex; align-items: center; gap: 12px; }
+
+.btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; backdrop-filter: blur(5px); white-space: nowrap; }
+.btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
+
+.btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
+.btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
+
+.kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
+.kebab-btn:hover { background: var(--glass-border); }
+
+.dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
+.dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: inherit; margin-bottom: 2px; }
+.dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
+.dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
+.dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
+.dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
+
+.show { display: block; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+.modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
+.modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+@keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
+.modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
+
+.tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
+.tree-item:hover { background: var(--glass-border); color: var(--text-main); }
+.tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
+
+iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
+
+@media (max-width: 768px) {
+    .header { flex-direction: column; padding: 15px; gap: 15px; }
+    .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .container { padding: 15px 12px; }
+    .file-meta { display: none; }
+    .file-item { padding: 12px 15px; flex-wrap: wrap; }
+    .actions { width: auto; justify-content: flex-end; }
+    .file-info { width: 100%; margin-bottom: 5px; }
+    .dropdown-content { right: 15px; top: 50px; }
+    .nav-row { flex-direction: column; align-items: stretch; }
+    .nav-buttons { justify-content: flex-start; }
+    .btn { padding: 8px 12px; font-size: 12px; }
+    .search-box { padding: 12px 15px; margin-bottom: 15px; }
+    .modal-content { width: 95%; height: 90%; }
+}
+</style>
 </head>
 <body>
     <div class="header">
@@ -300,6 +290,7 @@ UI_HTML = """
             </div>
         </div>
     </div>
+    
     <div class="container">
         <input type="text" id="search" class="search-box glass-box" placeholder="🔍 Search files..." onkeyup="doSearch()">
         <div class="nav-row">
@@ -365,7 +356,7 @@ UI_HTML = """
         const currentDir = "{current_dir}";
         
         const themeSelector = document.getElementById('themeSelector');
-        if(themeSelector) themeSelector.value = savedTheme;
+        if(themeSelector) themeSelector.value = localStorage.getItem('hub_theme') || 'black-white';
         
         function changeTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
@@ -373,15 +364,18 @@ UI_HTML = """
         }
         
         let selectedFiles = [];
+        
         function toggleSelection(e) {
             e.stopPropagation();
             updateBatchBar();
         }
+        
         function toggleAll(e) {
             let cbs = document.querySelectorAll('.file-cb');
             cbs.forEach(cb => cb.checked = e.target.checked);
             updateBatchBar();
         }
+        
         function updateBatchBar() {
             selectedFiles = Array.from(document.querySelectorAll('.file-cb:checked')).map(cb => cb.value);
             let bar = document.getElementById('batch-bar');
@@ -392,9 +386,13 @@ UI_HTML = """
                 bar.style.display = 'none';
             }
         }
+        
         function batchDelete() {
             if(confirm('Permanently delete ' + selectedFiles.length + ' items?')) {
-                fetch('/action', {method:'POST', body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})}).then(()=>location.reload());
+                fetch('/action', {
+                    method:'POST', 
+                    body:new URLSearchParams({action:'batch_delete', targets:selectedFiles.join('|'), dir:currentDir})
+                }).then(()=>location.reload());
             }
         }
         function batchMove() { openTreeModal('batch_move', selectedFiles.join('|')); }
@@ -433,10 +431,10 @@ UI_HTML = """
         
         function openPreview(url, type) {
             const body = document.getElementById('previewBody'); body.innerHTML = ''; document.getElementById('previewModal').style.display = 'flex';
-            if (type === 'image') body.innerHTML = `<img src="${url}" oncontextmenu="return false;" style="pointer-events:none;">`;
-            else if (type === 'video') body.innerHTML = `<video controls controlsList="nodownload" autoplay style="width:100%;" oncontextmenu="return false;"><source src="${url}"></video>`;
+            if (type === 'image') body.innerHTML = `<img src="${url}" oncontextmenu="return false;" style="pointer-events:none; max-width:90vw; max-height:90vh;">`;
+            else if (type === 'video') body.innerHTML = `<video controls controlsList="nodownload" autoplay style="max-width:90vw; max-height:90vh;" oncontextmenu="return false;"><source src="${url}"></video>`;
             else if (type === 'audio') body.innerHTML = `<audio controls controlsList="nodownload" autoplay style="width:300px;" oncontextmenu="return false;"><source src="${url}"></audio>`;
-            else if (type === 'pdf') body.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; background:#fff;" oncontextmenu="return false;"></iframe>`;
+            else if (type === 'pdf') body.innerHTML = `<iframe src="${url}#toolbar=0" style="width:90vw; height:90vh; background:#fff;" oncontextmenu="return false;"></iframe>`;
             else window.location.href = url + "&dl=1";
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }
@@ -448,6 +446,7 @@ UI_HTML = """
         }
         
         let treeAction = ''; let treeTarget = ''; let treeSelected = null;
+        
         function openTreeModal(act, tgt) {
             treeAction = act; treeTarget = tgt; treeSelected = null;
             let icon = act.includes('move') ? '✂️ Move ' : '📄 Copy ';
@@ -467,29 +466,29 @@ UI_HTML = """
                 document.getElementById('tree-list').innerHTML = h;
             });
         }
+        
         function selectTreeItem(el, path) {
             document.querySelectorAll('.tree-item').forEach(i => i.classList.remove('selected'));
             el.classList.add('selected');
             treeSelected = path === '/' ? '' : path.substring(1);
         }
+        
         function confirmTreeAction() {
             if(treeSelected === null) return alert('Please select a destination folder first.');
-            
             let params = {action: treeAction, dir: currentDir, dest: treeSelected};
             if(treeAction.startsWith('batch_')) {
                 params.targets = treeTarget;
             } else {
                 params.target = treeTarget;
             }
-            
             fetch('/action', {method:'POST', body:new URLSearchParams(params)}).then(()=>location.reload());
         }
 
         function clearLogs() { if(confirm('Clear all system logs?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'clear_logs'}) }).then(()=>location.reload()); }
         function createFolder() { let n = prompt("New Folder Name:"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkdir', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function createFile() { let n = prompt("New File Name (e.g. script.py):"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkfile', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function deleteItem(n) { if(confirm('Permanently delete ' + n + '?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function renameItem(n) { let nn = prompt("Rename " + n + " to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
+        function deleteItem(n) { if(confirm('Permanently delete?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function renameItem(n) { let nn = prompt("Rename to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
         function moveItem(n) { openTreeModal('move', n); }
         function copyItem(n) { openTreeModal('copy', n); }
         function lockItem(n) { let pwd = prompt("Set Lock Password (leave empty to remove lock):"); if(pwd !== null) fetch('/action', {method:'POST', body: new URLSearchParams({action:'lock_item', target:n, dir:currentDir, pwd:pwd}) }).then(()=>location.reload()); }
@@ -510,7 +509,7 @@ UI_HTML = """
         function shareItem(n) { askPathAndFetch('share', n); }
         function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) askPathAndFetch('share_limit', n, {limit:parseInt(limit)}); }
         function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) askPathAndFetch('share_pwd', n, {pwd:pwd}); }
-        function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) askPathAndFetch('renew', n); }
+        function renewItem(n) { if(confirm('Generate a new link? (Old link will expire)')) askPathAndFetch('renew', n); }
         
         function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
@@ -535,86 +534,68 @@ UI_HTML = """
             fetch('/action', {method:'POST', body: new URLSearchParams({action:'save_text', target:n, dir:currentDir, content:t}) }).then(()=>{ document.getElementById('editModal').style.display='none'; location.reload(); });
         }
 
-        const dropZone = document.getElementById('drop-zone');
-        if(dropZone) {
-            const input = document.getElementById('file-input');
-            const dropText = document.getElementById('drop-text');
-            const selFiles = document.getElementById('selected-files');
-            const btnStart = document.getElementById('btn-start-upload');
-            const btnPublish = document.getElementById('btn-confirm-publish');
-            let pendingFiles = [];
-
-            dropZone.onclick = (e) => {
-                if(e.target === btnStart || e.target === btnPublish || selFiles.contains(e.target)) return;
-                input.click();
-            };
+        // --- بخش فوق امن آپلود با روابع گلوبال ---
+        window.pendingFiles = [];
+        
+        window.handleFilesSelect = function(files) {
+            if(!files || files.length === 0) return;
+            window.pendingFiles = Array.from(files);
             
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--accent)"; dropZone.style.background = "rgba(128,128,128,0.1)"; });
-            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--glass-border)"; dropZone.style.background = "transparent"; });
-            dropZone.addEventListener('drop', (e) => { 
-                e.preventDefault(); 
-                dropZone.style.borderColor = "var(--glass-border)"; 
-                dropZone.style.background = "transparent"; 
-                if(e.dataTransfer.files.length > 0) {
-                    pendingFiles = Array.from(e.dataTransfer.files);
-                    showPending();
+            document.getElementById('drop-text').style.display = 'none';
+            document.getElementById('selected-files').style.display = 'block';
+            document.getElementById('btn-start-upload').style.display = 'block';
+            document.getElementById('btn-confirm-publish').style.display = 'none';
+            document.getElementById('progress-wrapper').style.display = 'none';
+            document.getElementById('progress-bar').style.width = '0%';
+            
+            document.getElementById('selected-files').innerHTML = window.pendingFiles.map(function(f) {
+                let sizeMB = (f.size / 1048576).toFixed(2);
+                return '📄 ' + f.name + ' <span style="color:var(--text-muted); font-size:11px;">(' + sizeMB + ' MB)</span>';
+            }).join('<br>');
+        };
+
+        window.startHubUpload = function(e) {
+            e.preventDefault(); 
+            e.stopPropagation();
+            if(window.pendingFiles.length === 0) return;
+            
+            let btn = document.getElementById('btn-start-upload');
+            btn.style.pointerEvents = 'none';
+            btn.innerText = '⏳ Uploading... Please wait';
+            document.getElementById('selected-files').style.opacity = '0.5';
+            
+            let fd = new FormData(); 
+            for(let i=0; i<window.pendingFiles.length; i++) {
+                fd.append('file', window.pendingFiles[i]);
+            }
+            
+            document.getElementById('progress-wrapper').style.display = 'block';
+            let progBar = document.getElementById('progress-bar');
+            
+            let xhr = new XMLHttpRequest(); 
+            xhr.open('POST', '/upload?dir=' + encodeURIComponent(currentDir), true);
+            
+            xhr.upload.addEventListener('progress', function(ev) { 
+                if(ev.lengthComputable) {
+                    let percent = Math.round((ev.loaded / ev.total) * 100);
+                    progBar.style.width = percent + '%'; 
+                    progBar.style.boxShadow = "0 0 15px var(--accent)";
                 }
             });
-
-            input.onchange = (e) => {
-                if(e.target.files.length > 0) {
-                    pendingFiles = Array.from(e.target.files);
-                    showPending();
-                }
-            };
-
-            function showPending() {
-                dropText.style.display = 'none';
-                selFiles.style.display = 'block';
-                btnStart.style.display = 'block';
-                btnPublish.style.display = 'none';
-                document.getElementById('progress-wrapper').style.display = 'none';
-                document.getElementById('progress-bar').style.width = '0%';
-                
-                selFiles.innerHTML = pendingFiles.map(f => `📄 ${f.name} <span style="color:var(--text-muted); font-size:11px;">(${(f.size/1048576).toFixed(2)} MB)</span>`).join('<br>');
-            }
-
-            btnStart.onclick = (e) => {
-                e.preventDefault(); e.stopPropagation();
-                if(pendingFiles.length === 0) return;
-                
-                btnStart.style.pointerEvents = 'none';
-                btnStart.innerText = '⏳ Uploading... Please wait';
-                selFiles.style.opacity = '0.5';
-                
-                const fd = new FormData(); 
-                for(let f of pendingFiles) fd.append('file', f);
-                
-                document.getElementById('progress-wrapper').style.display = 'block';
-                const xhr = new XMLHttpRequest(); 
-                xhr.open('POST', '/upload?dir='+encodeURIComponent(currentDir), true);
-                
-                xhr.upload.onprogress = (ev) => { 
-                    if(ev.lengthComputable) {
-                        let percent = Math.round((ev.loaded/ev.total)*100);
-                        document.getElementById('progress-bar').style.width = percent + '%'; 
-                        document.getElementById('progress-bar').style.boxShadow = "0 0 15px var(--accent)";
-                    }
-                };
-                
-                xhr.onload = () => {
-                    btnStart.style.display = 'none';
-                    btnPublish.style.display = 'block';
-                };
-                xhr.send(fd);
+            
+            xhr.onload = function() {
+                btn.style.display = 'none';
+                document.getElementById('btn-confirm-publish').style.display = 'block';
             };
             
-            btnPublish.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                location.reload();
+            xhr.onerror = function() {
+                alert('Upload connection failed! Check your network.');
+                btn.innerText = '❌ Failed (Retry)';
+                btn.style.pointerEvents = 'auto';
             };
-        }
+            
+            xhr.send(fd);
+        };
     </script>
 </body>
 </html>
@@ -627,14 +608,12 @@ LOGIN_HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Access</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
-        
         body { 
             display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; margin: 0;
             background: linear-gradient(45deg, #000000, #171717, #262626, #000000);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
-            font-family: 'Inter', system-ui, sans-serif; 
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
         @keyframes gradientBG { 0% {background-position: 0% 50%;} 50% {background-position: 100% 50%;} 100% {background-position: 0% 50%;} }
         
@@ -663,7 +642,7 @@ LOGIN_HTML = """
             background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2); 
             color: white; border-radius: 12px; box-sizing: border-box; outline: none; 
             font-size: 15px; text-align: center; letter-spacing: 4px; transition: 0.3s;
-            font-family: 'Inter';
+            font-family: inherit;
         }
         input:focus { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); background: rgba(0,0,0,0.8); }
         input::placeholder { letter-spacing: 2px; color: rgba(255,255,255,0.3); }
@@ -674,7 +653,7 @@ LOGIN_HTML = """
             border: none; border-radius: 12px; cursor: pointer; 
             font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: 1px;
             box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: 0.3s;
-            font-family: 'Inter';
+            font-family: inherit;
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }
     </style>
@@ -853,7 +832,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             l = int(self.headers.get('Content-Length', 0))
             data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             
-            # رفع باگ زیرپوشه‌ها
             q = data.get('dir', [''])[0]
             curr = self.get_safe_path(q)
             
@@ -971,13 +949,21 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
         admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
         
-        up_area = '<div class="glass-box" id="drop-zone" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" hidden multiple><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
+        # کادر آپلود با توابع جاوا اسکریپت کاملا خطی و امن
+        up_area = f'''<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== 'BUTTON') document.getElementById('file-input').click();" ondragover="event.preventDefault(); this.style.borderColor='var(--accent)';" ondragleave="event.preventDefault(); this.style.borderColor='var(--glass-border)';" ondrop="event.preventDefault(); this.style.borderColor='var(--glass-border)'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;">
+            <p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p>
+            <input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)">
+            <div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div>
+            <button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button>
+            <button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button>
+            <div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div>
+        </div>''' if role == 'admin' else ''
         
         disk_html = ""
         if role == 'admin':
             try:
                 tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
-                dir_size = get_hub_size(self.CONFIG['UPLOAD_DIR'])
+                dir_size = _HUB_SIZE_CACHE
                 disk_html = f"""<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div></div>"""
             except: disk_html = ""
 
@@ -1015,13 +1001,17 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
             stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
             
-            cb_html = f'<input type="checkbox" class="file-cb" value="{html.escape(f)}" onclick="toggleSelection(event)" style="width:16px;height:16px;cursor:pointer;margin-right:10px;accent-color:var(--accent);">' if role == 'admin' else ''
+            # پاکسازی اسم فایل برای جلوگیری از خطای جاوا اسکریپت (حذف کوتیشن در توابع)
+            f_safe_js = f.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
+            f_html = html.escape(f)
+            
+            cb_html = f'<input type="checkbox" class="file-cb" value="{f_html}" onclick="toggleSelection(event)" style="width:16px;height:16px;cursor:pointer;margin-right:10px;accent-color:var(--accent);">' if role == 'admin' else ''
             
             if is_d:
                 nx = f"{req_dir}/{f}".strip('/')
                 dl_zip_click = f"handleItemClick('/zip/{nx}', 'download', '{lock_id}')"
-                admin_h = f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button><button class="action-orange" onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f}\')">🗑️ Delete</button>' if role == 'admin' else f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button>'
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                admin_h = f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button><button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>' if role == 'admin' else f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button>'
+                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f_html}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
             else:
                 p_type = get_preview_type(f); dl = urllib.parse.quote(f"/{req_dir}/{f}".replace('//', '/'))
                 p_type_str = p_type if p_type else 'download'
@@ -1038,16 +1028,16 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
                 
                 if role == 'admin':
-                    toggle_dl_btn = f'<button class="action-accent" onclick="toggleDl(\'{f}\')">{"✅ Enable Download" if is_no_dl else "🚫 Disable Download"}</button>'
-                    s_btns = f'{view_link_btn}<button class="action-accent" onclick="renewItem(\'{f}\')">🔄 Renew Link</button><button class="action-red" onclick="unshareItem(\'{f}\')">🚫 Unshare</button>' if share_badge else f'<button class="action-accent" onclick="shareItem(\'{f}\')">🔗 Public Link</button><button class="action-accent" onclick="limitedShareItem(\'{f}\')">⏳ Limited Link</button><button class="action-orange" onclick="pwdShareItem(\'{f}\')">🔑 Secure Link</button>'
-                    edit_btn = f'<button class="action-orange" onclick="editItem(\'{f}\', \'{lock_id}\')">📝 Edit File</button>' if is_text else ""
-                    admin_h = f'{toggle_dl_btn}{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f}\')">🗑️ Delete</button>'
+                    toggle_dl_btn = f'<button class="action-accent" onclick="toggleDl(\'{f_safe_js}\')">{"✅ Enable Download" if is_no_dl else "🚫 Disable Download"}</button>'
+                    s_btns = f'{view_link_btn}<button class="action-accent" onclick="renewItem(\'{f_safe_js}\')">🔄 Renew Link</button><button class="action-red" onclick="unshareItem(\'{f_safe_js}\')">🚫 Unshare</button>' if share_badge else f'<button class="action-accent" onclick="shareItem(\'{f_safe_js}\')">🔗 Public Link</button><button class="action-accent" onclick="limitedShareItem(\'{f_safe_js}\')">⏳ Limited Link</button><button class="action-orange" onclick="pwdShareItem(\'{f_safe_js}\')">🔑 Secure Link</button>'
+                    edit_btn = f'<button class="action-orange" onclick="editItem(\'{f_safe_js}\', \'{lock_id}\')">📝 Edit File</button>' if is_text else ""
+                    admin_h = f'{toggle_dl_btn}{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>'
                 else: 
                     admin_h = ''
                     
                 dl_btn = f'<button onclick="handleItemClick(\'/download{dl}&dl=1\', \'download\', \'{lock_id}\')" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</button>' if role == 'admin' or not is_no_dl else ''
                 
-                rows += f'<div class="file-item" data-name="{f}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f}\')">⋮</button><div class="dropdown-content" id="m-{f}">{admin_h}</div></div></div>'
+                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f_html}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
         
         html_out = UI_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB'))) \
                           .replace('{role}', str(role.capitalize())) \
@@ -1071,7 +1061,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
-            # جستجو برای پیدا کردن اولین boundary
+            # خواندن خطوط تا رسیدن به اولین boundary
             while remainbytes > 0:
                 line = self.rfile.readline()
                 remainbytes -= len(line)
@@ -1081,7 +1071,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             while remainbytes > 0:
                 filename = None
                 
-                # خواندن هدرهای فایل فعلی
+                # پارس کردن هدرهای فایل فعلی
                 while remainbytes > 0:
                     line = self.rfile.readline()
                     remainbytes -= len(line)
@@ -1092,7 +1082,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         filename = fn[0]
                         
                 if not filename:
-                    # اگر اسم فایلی پیدا نشد برو سراغ قسمت بعدی
+                    # اسکیپ به boundary بعدی در صورت نبود اسم فایل
                     while remainbytes > 0:
                         line = self.rfile.readline()
                         remainbytes -= len(line)
@@ -1102,7 +1092,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         break
                     continue
                     
-                # شروع نوشتن فایل
+                # نوشتن دیتای فایل
                 out_path = os.path.join(curr, filename)
                 with open(out_path, 'wb') as f:
                     preline = self.rfile.readline()
@@ -1124,8 +1114,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                             preline = line
                             
                 add_log(self.client_address[0], f"Uploaded File: {filename}")
-                
-                # اگر این آخرین بخش بود، کلاً خارج شو
                 if b'--' + boundary + b'--' in line:
                     break
                     
@@ -1170,7 +1158,11 @@ def main():
         socketserver.TCPServer.allow_reuse_address = True
         cfg = load_config()
         if not cfg: 
-            print("[!] No config found! Run Setup first."); return
+            print("[!] No config found! Run Setup first.")
+            return
+            
+        # روشن کردن سیستم کش دیسک برای سرعت در پس‌زمینه
+        threading.Thread(target=calculate_dir_size_bg, args=(cfg['UPLOAD_DIR'],), daemon=True).start()
             
         FileHubHandler.CONFIG = cfg
         with socketserver.ThreadingTCPServer(("", int(cfg['PORT'])), FileHubHandler) as h:
