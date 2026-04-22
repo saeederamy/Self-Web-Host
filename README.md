@@ -52,6 +52,22 @@ Once installed, Black Hub runs as a background service. You can manage it from a
 ```bash
 black-hub
 ```
+ق
+for Edit Information:
+```bash
+nano /opt/black-hub/fileserver.conf
+```
+```bash
+systemctl restart black-hub
+```
+
+For remove IP block:
+```bash
+rm /opt/black-hub/ip_blocks.json
+systemctl restart black-hub
+```
+
+
 **CLI Features:** Run initial setup, update the panel directly from GitHub, start/stop the service, and **Auto SSL:** Install Nginx and secure your panel with Let's Encrypt (Certbot) in one click.
 
 ---
