@@ -52,7 +52,6 @@ Once installed, Black Hub runs as a background service. You can manage it from a
 ```bash
 black-hub
 ```
-ق
 for Edit Information:
 ```bash
 nano /opt/black-hub/fileserver.conf
