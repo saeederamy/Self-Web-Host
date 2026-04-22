@@ -59,12 +59,28 @@ nano /opt/black-hub/fileserver.conf
 ```bash
 systemctl restart black-hub
 ```
-
 For remove IP block:
 ```bash
 rm /opt/black-hub/ip_blocks.json
 systemctl restart black-hub
 ```
+## 🐧 Linux Installation for Iran CDN  (Ubuntu/Debian)
+Once installed, Black Hub runs as a background service. You can manage it from anywhere in your terminal by typing:
+```bash
+black-hub
+```
+For Iran CDN after install :
+```bash
+rm /opt/black-hub/hub.py
+```
+```bash
+nano /opt/black-hub/hub.py
+```
+Copy hubir.py in after
+```bash
+systemctl restart black-hub
+```
+
 
 
 **CLI Features:** Run initial setup, update the panel directly from GitHub, start/stop the service, and **Auto SSL:** Install Nginx and secure your panel with Let's Encrypt (Certbot) in one click.
