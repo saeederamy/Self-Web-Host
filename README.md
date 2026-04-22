@@ -50,7 +50,7 @@ bash <(curl -sL https://raw.githubusercontent.com/saeederamy/black-hub/main/inst
 ### 💻 Linux CLI Management
 Once installed, Black Hub runs as a background service. You can manage it from anywhere in your terminal by typing:
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/saeederamy/black-hub/main/install.sh | tr -d '\r')
+black-hub
 ```
 for Edit Information:
 ```bash
