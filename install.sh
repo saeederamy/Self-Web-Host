@@ -1,5 +1,5 @@
 #!/bin/bash
-REPO_URL="https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main"
+REPO_URL="https://raw.githubusercontent.com/saeederamy/black-hub/main"
 INSTALL_DIR="/opt/black-hub"
 
 echo "------------------------------------------"
