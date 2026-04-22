@@ -6,7 +6,7 @@ PY_SCRIPT="hub.py"
 SERVICE_FILE="/etc/systemd/system/$APP_NAME.service"
 WORKING_DIR="/opt/black-hub"
 CONF_FILE="fileserver.conf"
-REPO_URL="https://raw.githubusercontent.com/saeederamy/Self-Web-Host/main"
+REPO_URL="https://raw.githubusercontent.com/saeederamy/black-hub/main"
 
 # انتقال خودکار به پوشه نصب
 mkdir -p "$WORKING_DIR"
