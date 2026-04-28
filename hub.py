@@ -1137,6 +1137,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         
     def _send_file(self, p, dl=False, name=None):
         self.send_response(200); self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Access-Control-Allow-Origin", "*")
         if dl: self.send_header("Content-Disposition", f'attachment; filename="{name or os.path.basename(p)}"')
         self.end_headers()
         with open(p, "rb") as f: shutil.copyfileobj(f, self.wfile)
