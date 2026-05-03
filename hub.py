@@ -25,7 +25,6 @@ NODL_FILE = "no_download.json"
 # لیست سفید: این آی‌پی‌ها هرگز بن نمی‌شوند
 WHITELIST_IPS = ['127.0.0.1', 'localhost', '::1']
 
-# --- سیستم محاسبه حجم در پس‌زمینه (برای جلوگیری از کندی سایت) ---
 _HUB_SIZE_CACHE = 0
 
 def calculate_dir_size_bg(path):
@@ -104,21 +103,17 @@ COMMON_STYLE = """
         --glass-bg: rgba(255, 255, 255, 0.03);
         --glass-border: rgba(255, 255, 255, 0.1);
         --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
-        
         --accent: #ffffff;
         --accent-glow: rgba(255, 255, 255, 0.3);
         --accent-text: #000000;
-        
         --neon-red: #ef4444;
         --neon-red-glow: rgba(239, 68, 68, 0.4);
         --neon-orange: #f97316;
         --neon-orange-glow: rgba(249, 115, 22, 0.4);
-        
         --text-main: #f8fafc;
         --text-muted: #94a3b8;
         --input-bg: rgba(0,0,0,0.4);
     }
-
     [data-theme="black-blue"] {
         --bg-dark: #0a0a0f; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0a0a0f 70%);
@@ -126,7 +121,6 @@ COMMON_STYLE = """
         --accent-glow: rgba(59, 130, 246, 0.4);
         --accent-text: #ffffff;
     }
-
     [data-theme="black-red"] {
         --bg-dark: #0f0000; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #2a0808 0%, #0f0000 70%);
@@ -134,7 +128,6 @@ COMMON_STYLE = """
         --accent-glow: rgba(239, 68, 68, 0.4);
         --accent-text: #ffffff;
     }
-    
     [data-theme="pure-black"] {
         --bg-dark: #000000; 
         --bg-gradient: none;
@@ -148,23 +141,19 @@ COMMON_STYLE = """
         --text-muted: #737373;
         --input-bg: #000000;
     }
-
     [data-theme="light"] {
         --bg-dark: #f8fafc; 
         --bg-gradient: radial-gradient(circle at 50% 0%, #ffffff 0%, #e2e8f0 100%);
         --glass-bg: rgba(255, 255, 255, 0.6);
         --glass-border: rgba(0, 0, 0, 0.1);
         --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-        
         --accent: #0f172a;
         --accent-glow: rgba(15, 23, 42, 0.2);
         --accent-text: #ffffff;
-        
         --text-main: #0f172a;
         --text-muted: #475569;
         --input-bg: rgba(255,255,255,0.8);
     }
-    
     body { 
         font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         background: var(--bg-dark); 
@@ -175,7 +164,6 @@ COMMON_STYLE = """
         -webkit-font-smoothing: antialiased;
         transition: background 0.3s ease, color 0.3s ease;
     }
-    
     .glass-box { 
         background: var(--glass-bg); 
         backdrop-filter: blur(16px); 
@@ -185,7 +173,6 @@ COMMON_STYLE = """
         box-shadow: var(--glass-shadow);
         transition: background 0.3s ease, border 0.3s ease, box-shadow 0.3s ease;
     }
-    
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 10px; }
@@ -202,70 +189,51 @@ UI_HTML = """<!DOCTYPE html>
 .header { background: var(--glass-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 30px rgba(0,0,0,0.1); transition: all 0.3s ease; }
 .logo { font-size: 22px; font-weight: 800; letter-spacing: 2px; color: var(--text-main); text-transform: uppercase; }
 .header-controls { display: flex; align-items: center; gap: 15px; }
-
 .badge { border: 1px solid var(--accent); padding: 4px 14px; border-radius: 50px; font-size: 11px; font-weight: 600; color: var(--accent); background: rgba(128, 128, 128, 0.1); box-shadow: 0 0 10px var(--accent-glow); text-transform: uppercase; white-space: nowrap; }
-
 .theme-select { background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); padding: 6px 10px; border-radius: 8px; font-size: 12px; font-family: inherit; outline: none; cursor: pointer; max-width: 140px; }
 .theme-select option { background: var(--bg-dark); color: var(--text-main); }
-
 .logout-link { color: var(--neon-red); text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239, 68, 68, 0.3); transition: 0.3s; white-space: nowrap; }
 .logout-link:hover { background: var(--neon-red); color: #fff; box-shadow: 0 0 15px var(--neon-red-glow); }
-
 .container { max-width: 1200px; margin: 0 auto; padding: 30px 25px; transition: all 0.3s ease; box-sizing: border-box; }
-
 .search-box { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px 20px; color: var(--text-main); font-size: 15px; margin-bottom: 25px; box-sizing: border-box; transition: 0.3s; font-family: inherit; }
 .search-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
-
 .nav-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
 .breadcrumbs { font-size: 14px; color: var(--text-muted); font-weight: 500; word-break: break-word; flex: 1; min-width: 200px; }
 .breadcrumbs a { color: var(--text-main); text-decoration: none; transition: 0.2s; }
 .breadcrumbs a:hover { color: var(--accent); text-shadow: 0 0 8px var(--accent-glow); }
-
 .nav-buttons { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-
 .file-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-bottom: 1px solid var(--glass-border); border-left: 2px solid transparent; transition: 0.2s; position: relative; gap: 10px; }
 .file-item:first-child { border-top-left-radius: 16px; border-top-right-radius: 16px; }
 .file-item:last-child { border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; border-bottom: none; }
 .file-item:hover { background: var(--glass-border); border-left: 2px solid var(--accent); z-index: 50; }
-
 .file-info { display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0; }
 .file-meta { display: flex; gap: 30px; font-size: 13px; color: var(--text-muted); justify-content: flex-end; padding-right: 15px; font-weight: 400; white-space: nowrap; }
 .file-name { font-size: 15px; font-weight: 500; color: var(--text-main); text-decoration: none; word-break: break-word; overflow-wrap: anywhere; cursor: pointer; transition: 0.2s; display: inline-block; }
 .file-name:hover { color: var(--accent); }
-
 .actions { display: flex; align-items: center; gap: 12px; }
-
 .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-main); transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; backdrop-filter: blur(5px); white-space: nowrap; }
 .btn:hover { background: var(--glass-border); transform: translateY(-2px); box-shadow: 0 5px 15px var(--glass-shadow); }
-
 .btn-action { background: rgba(128, 128, 128, 0.1); color: var(--accent); border-color: var(--accent-glow); }
 .btn-action:hover { background: var(--accent); color: var(--accent-text); box-shadow: 0 0 20px var(--accent-glow); }
-
 .kebab-btn { background: transparent; border: 1px solid var(--glass-border); color: var(--text-main); cursor: pointer; font-size: 18px; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; transition: 0.3s; flex-shrink: 0; }
 .kebab-btn:hover { background: var(--glass-border); }
-
 .dropdown-content { display: none; position: absolute; right: 24px; top: 55px; background: var(--bg-dark); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); min-width: 200px; border-radius: 12px; z-index: 100; box-shadow: var(--glass-shadow); overflow: hidden; padding: 8px; }
 .dropdown-content button { width: 100%; padding: 12px 16px; text-align: left; background: transparent; border: none; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; display: block; border-radius: 8px; transition: 0.2s; font-family: inherit; margin-bottom: 2px; }
 .dropdown-content button:hover { background: var(--glass-border); color: var(--text-main); padding-left: 20px; }
 .dropdown-content button.action-red:hover { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-left: 2px solid var(--neon-red); }
 .dropdown-content button.action-orange:hover { background: rgba(249, 115, 22, 0.15); color: var(--neon-orange); border-left: 2px solid var(--neon-orange); }
 .dropdown-content button.action-accent:hover { background: rgba(128, 128, 128, 0.15); color: var(--accent); border-left: 2px solid var(--accent); }
-
 .show { display: block; animation: fadeIn 0.2s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
 .modal { display: none; position: fixed; z-index: 2000; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(15px); justify-content: center; align-items: center; }
 .modal-content { width: 90%; height: 85%; max-width: 1000px; position: relative; display: flex; justify-content: center; align-items: center; animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-close { position: absolute; top: -40px; right: 0; color: #fff; font-size: 35px; cursor: pointer; opacity: 0.6; transition: 0.3s; line-height: 1; }
 .modal-close:hover { opacity: 1; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red-glow); }
-
 .tree-item { padding: 12px 15px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: var(--text-muted); font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; border: 1px solid transparent; word-break: break-all; }
 .tree-item:hover { background: var(--glass-border); color: var(--text-main); }
 .tree-item.selected { background: rgba(128, 128, 128, 0.15); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-glow); box-shadow: 0 0 15px var(--accent-glow); }
-
 iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border); max-width: 100%; max-height: 100%; background: rgba(0,0,0,0.5); box-shadow: var(--glass-shadow); }
-
 @media (max-width: 768px) {
     .header { flex-direction: column; padding: 15px; gap: 15px; }
     .header-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -415,8 +383,11 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
                 if (p) { document.cookie = "lock_" + lockId + "=" + p + ";path=/"; } 
                 else { return; }
             }
-            if (type === 'download') { window.location.href = url; } 
-            else { openPreview(url, type); }
+            if (type === 'download') { 
+                window.location.href = url.includes('?dl=1') ? url : url + "?dl=1"; 
+            } else { 
+                openPreview(url, type); 
+            }
         }
 
         function doSearch() {
@@ -445,7 +416,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             else if (type === 'video') body.innerHTML = `<video controls controlsList="nodownload" autoplay style="max-width:90vw; max-height:90vh;" oncontextmenu="return false;"><source src="${url}"></video>`;
             else if (type === 'audio') body.innerHTML = `<audio controls controlsList="nodownload" autoplay style="width:300px;" oncontextmenu="return false;"><source src="${url}"></audio>`;
             else if (type === 'pdf') body.innerHTML = `<iframe src="${url}#toolbar=0" style="width:90vw; height:90vh; background:#fff;" oncontextmenu="return false;"></iframe>`;
-            else window.location.href = url + "&dl=1";
+            else window.location.href = url + "?dl=1";
         }
         function closePreview() { document.getElementById('previewModal').style.display = 'none'; document.getElementById('previewBody').innerHTML = ''; }
         
@@ -497,8 +468,8 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
         function clearLogs() { if(confirm('Clear all system logs?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'clear_logs'}) }).then(()=>location.reload()); }
         function createFolder() { let n = prompt("New Folder Name:"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkdir', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function createFile() { let n = prompt("New File Name (e.g. script.py):"); if(n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'mkfile', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function deleteItem(n) { if(confirm('Permanently delete ' + n + '?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
-        function renameItem(n) { let nn = prompt("Rename " + n + " to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
+        function deleteItem(n) { if(confirm('Permanently delete?')) fetch('/action', {method:'POST', body: new URLSearchParams({action:'delete', target:n, dir:currentDir}) }).then(()=>location.reload()); }
+        function renameItem(n) { let nn = prompt("Rename to:", n); if(nn && nn !== n) fetch('/action', {method:'POST', body: new URLSearchParams({action:'rename', target:n, new_name:nn, dir:currentDir}) }).then(()=>location.reload()); }
         function moveItem(n) { openTreeModal('move', n); }
         function copyItem(n) { openTreeModal('copy', n); }
         function lockItem(n) { let pwd = prompt("Set Lock Password (leave empty to remove lock):"); if(pwd !== null) fetch('/action', {method:'POST', body: new URLSearchParams({action:'lock_item', target:n, dir:currentDir, pwd:pwd}) }).then(()=>location.reload()); }
@@ -519,7 +490,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
         function shareItem(n) { askPathAndFetch('share', n); }
         function limitedShareItem(n) { let limit = prompt("Max Downloads:", "1"); if(limit && parseInt(limit)>0) askPathAndFetch('share_limit', n, {limit:parseInt(limit)}); }
         function pwdShareItem(n) { let pwd = prompt("Set Link Password:"); if(pwd) askPathAndFetch('share_pwd', n, {pwd:pwd}); }
-        function renewItem(n) { if(confirm('Generate a new link for ' + n + '? (Old link will expire)')) askPathAndFetch('renew', n); }
+        function renewItem(n) { if(confirm('Generate a new link? (Old link will expire)')) askPathAndFetch('renew', n); }
         
         function unshareItem(n) { fetch('/action', {method:'POST', body: new URLSearchParams({action:'unshare', target:n, dir:currentDir}) }).then(()=>location.reload()); }
         function viewLink(tk) { prompt("Current Shared Link:", window.location.origin + "/p/" + tk); }
@@ -544,7 +515,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             fetch('/action', {method:'POST', body: new URLSearchParams({action:'save_text', target:n, dir:currentDir, content:t}) }).then(()=>{ document.getElementById('editModal').style.display='none'; location.reload(); });
         }
 
-        // --- بخش فوق امن آپلود با روابع گلوبال ---
+        // --- بخش آپلود استاندارد (بدون تکه‌تکه شدن) ---
         window.pendingFiles = [];
         
         window.handleFilesSelect = function(files) {
@@ -636,6 +607,7 @@ LOGIN_HTML = """
             border-radius: 20px;
             position: relative; overflow: hidden;
             box-sizing: border-box;
+            z-index: 10;
         }
         
         .login-card::before {
@@ -666,6 +638,27 @@ LOGIN_HTML = """
             font-family: inherit;
         }
         button:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255, 255, 255, 0.4); background: #e5e5e5; }
+        
+        .dev-link {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .dev-link a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+        .dev-link a:hover {
+            color: #fff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+        }
     </style>
 </head>
 <body>
@@ -675,6 +668,15 @@ LOGIN_HTML = """
             <input type="password" name="password" placeholder="••••••••" required autofocus>
             <button type="submit">Login</button>
         </form>
+        
+        <div class="dev-link">
+            <a href="https://github.com/saeederamy" target="_blank">
+                <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+                Developed by Saeed Eramy
+            </a>
+        </div>
     </div>
 </body>
 </html>
@@ -779,6 +781,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 add_log(client_ip, f"Downloaded ZIP: {self.get_rel(target)}")
                 tmp_base = tempfile.mktemp(); shutil.make_archive(tmp_base, 'zip', target); zip_path = tmp_base + '.zip'
                 self._send_file(zip_path, dl=True, name=os.path.basename(target)+".zip"); os.remove(zip_path)
+            else:
+                self.send_error(404)
             return
             
         if parsed.path == "/": 
@@ -798,6 +802,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             if os.path.isfile(target): 
                 add_log(client_ip, f"{'Downloaded' if is_dl else 'Streamed'} File: {rel}")
                 self._send_file(target, dl=is_dl)
+            else:
+                self.send_error(404)
                 
         elif parsed.path == "/logout":
             add_log(client_ip, "Logged Out")
@@ -817,6 +823,112 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     self._send_resp(f'<script>let p=prompt("🔒 Locked Area. Password:"); if(p){{ document.cookie="lock_{h}="+p+";path=/"; location.reload(); }} else history.back();</script>')
                     return False
         return True
+
+    def _serve_ui(self, role, curr, req_dir):
+        pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
+        for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
+        
+        select_all_btn = '<label class="btn" style="padding:8px 12px; gap:6px;"><input type="checkbox" onchange="toggleAll(event)" style="accent-color:var(--accent);"> Select All</label>' if role == 'admin' else ''
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
+        admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
+        
+        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
+        
+        disk_html = ""
+        if role == 'admin':
+            try:
+                tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
+                dir_size = _HUB_SIZE_CACHE
+                disk_html = f"""<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div></div>"""
+            except: disk_html = ""
+
+        lns = load_json(LINKS_FILE)
+        locks = load_json(LOCKS_FILE)
+        ndl = load_json(NODL_FILE)
+        
+        link_map = {}
+        for tk, data in lns.items():
+            tgt = data.get('target') if isinstance(data, dict) else data
+            if tgt not in link_map: link_map[tgt] = []
+            link_map[tgt].append((tk, data))
+
+        rows = ""
+        if pts: rows += f'<div class="file-item" data-name=".."><div class="file-info"><span style="font-size:20px">🔙</span><a href="/?dir={urllib.parse.quote("/".join(pts[:-1]))}" class="file-name" style="color:var(--accent);">Return to Parent</a></div></div>'
+        
+        try:
+            entries = list(os.scandir(curr))
+            entries.sort(key=lambda e: (not e.is_dir(), e.name.lower()))
+        except: entries = []
+        
+        for e in entries:
+            f = e.name
+            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE, NODL_FILE, sys.argv[0].split('/')[-1].split('\\')[-1]]: continue
+            
+            is_d = e.is_dir()
+            stat = e.stat()
+            size = format_size(stat.st_size) if not is_d else "--"
+            date = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
+            full = e.path
+            rel = self.get_rel(full)
+            
+            is_no_dl = rel in ndl
+            lock_id = hashlib.md5(rel.encode()).hexdigest() if rel in locks else ""
+            lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
+            stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
+            
+            f_safe_js = f.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
+            f_html = html.escape(f)
+            
+            cb_html = f'<input type="checkbox" class="file-cb" value="{f_html}" onclick="toggleSelection(event)" style="width:16px;height:16px;cursor:pointer;margin-right:10px;accent-color:var(--accent);">' if role == 'admin' else ''
+            
+            if is_d:
+                nx = f"{req_dir}/{f}".strip('/')
+                dl_zip_click = f"handleItemClick('/zip/{nx}', 'download', '{lock_id}')"
+                admin_h = f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button><button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>' if role == 'admin' else f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button>'
+                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f_html}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
+            else:
+                p_type = get_preview_type(f)
+                
+                # حل مشکل 404 در دانلود (اسلش‌ها دست‌نخورده باقی می‌مانند)
+                dl_path = f"/{req_dir}/{f}".replace('//', '/')
+                dl = urllib.parse.quote(dl_path, safe='/')
+                
+                p_type_str = p_type if p_type else 'download'
+                p_click = f"handleItemClick('/download{dl}', '{p_type_str}', '{lock_id}')"
+                
+                share_badge = ""
+                view_link_btn = ""
+                if rel in link_map:
+                    tk, data = link_map[rel][0]
+                    pwd_hint = f" (Pass: {data.get('pwd')})" if isinstance(data, dict) and data.get('pwd') else ""
+                    share_badge = f'<span style="color:var(--neon-red); font-size:10px; margin-left:8px; text-shadow:0 0 8px var(--neon-red-glow); white-space:nowrap;">● Shared{pwd_hint if role == "admin" else ""}</span>'
+                    view_link_btn = f'<button class="action-accent" onclick="viewLink(\'{tk}\')">👁️ View Link</button>'
+                        
+                is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
+                
+                if role == 'admin':
+                    toggle_dl_btn = f'<button class="action-accent" onclick="toggleDl(\'{f_safe_js}\')">{"✅ Enable Download" if is_no_dl else "🚫 Disable Download"}</button>'
+                    s_btns = f'{view_link_btn}<button class="action-accent" onclick="renewItem(\'{f_safe_js}\')">🔄 Renew Link</button><button class="action-red" onclick="unshareItem(\'{f_safe_js}\')">🚫 Unshare</button>' if share_badge else f'<button class="action-accent" onclick="shareItem(\'{f_safe_js}\')">🔗 Public Link</button><button class="action-accent" onclick="limitedShareItem(\'{f_safe_js}\')">⏳ Limited Link</button><button class="action-orange" onclick="pwdShareItem(\'{f_safe_js}\')">🔑 Secure Link</button>'
+                    edit_btn = f'<button class="action-orange" onclick="editItem(\'{f_safe_js}\', \'{lock_id}\')">📝 Edit File</button>' if is_text else ""
+                    admin_h = f'{toggle_dl_btn}{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>'
+                else: 
+                    admin_h = ''
+                    
+                dl_btn = f'<a href="/download{dl}?dl=1" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</a>' if role == 'admin' or not is_no_dl else ''
+                
+                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f_html}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
+        
+        html_out = UI_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB'))) \
+                          .replace('{role}', str(role.capitalize())) \
+                          .replace('{breadcrumbs}', str(bc)) \
+                          .replace('{admin_top_btn}', str(select_all_btn + admin_btn)) \
+                          .replace('{admin_log_btn}', str(admin_log_btn)) \
+                          .replace('{disk_dashboard}', str(disk_html)) \
+                          .replace('{admin_upload_area}', str(up_area)) \
+                          .replace('{file_rows}', str(rows)) \
+                          .replace('{current_dir}', str(req_dir))
+                          
+        self._send_resp(html_out)
 
     def do_POST(self):
         client_ip = self.get_client_ip()
@@ -961,107 +1073,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 
             self.send_response(200); self.end_headers()
 
-    def _serve_ui(self, role, curr, req_dir):
-        pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
-        for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
-        
-        select_all_btn = '<label class="btn" style="padding:8px 12px; gap:6px;"><input type="checkbox" onchange="toggleAll(event)" style="accent-color:var(--accent);"> Select All</label>' if role == 'admin' else ''
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
-        admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
-        
-        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
-        
-        disk_html = ""
-        if role == 'admin':
-            try:
-                tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
-                dir_size = _HUB_SIZE_CACHE
-                disk_html = f"""<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div></div>"""
-            except: disk_html = ""
-
-        lns = load_json(LINKS_FILE)
-        locks = load_json(LOCKS_FILE)
-        ndl = load_json(NODL_FILE)
-        
-        link_map = {}
-        for tk, data in lns.items():
-            tgt = data.get('target') if isinstance(data, dict) else data
-            if tgt not in link_map: link_map[tgt] = []
-            link_map[tgt].append((tk, data))
-
-        rows = ""
-        if pts: rows += f'<div class="file-item" data-name=".."><div class="file-info"><span style="font-size:20px">🔙</span><a href="/?dir={urllib.parse.quote("/".join(pts[:-1]))}" class="file-name" style="color:var(--accent);">Return to Parent</a></div></div>'
-        
-        try:
-            entries = list(os.scandir(curr))
-            entries.sort(key=lambda e: (not e.is_dir(), e.name.lower()))
-        except: entries = []
-        
-        for e in entries:
-            f = e.name
-            if f in [CONFIG_FILE, LINKS_FILE, LOCKS_FILE, LOG_FILE, BLOCK_FILE, NODL_FILE, sys.argv[0].split('/')[-1].split('\\')[-1]]: continue
-            
-            is_d = e.is_dir()
-            stat = e.stat()
-            size = format_size(stat.st_size) if not is_d else "--"
-            date = datetime.datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M')
-            full = e.path
-            rel = self.get_rel(full)
-            
-            is_no_dl = rel in ndl
-            lock_id = hashlib.md5(rel.encode()).hexdigest() if rel in locks else ""
-            lock_info = f' <span style="color:var(--neon-orange); font-size:11px; margin-left:8px; text-shadow:0 0 8px var(--neon-orange-glow); white-space:nowrap;">[Pass: {locks[rel]}]</span>' if rel in locks and role == 'admin' else (' 🔒' if rel in locks else '')
-            stream_badge = f'<span style="color:#3b82f6; font-size:10px; margin-left:8px; text-shadow:0 0 8px rgba(59,130,246,0.4); white-space:nowrap;">👀 Stream Only</span>' if is_no_dl else ""
-            
-            f_safe_js = f.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
-            f_html = html.escape(f)
-            
-            cb_html = f'<input type="checkbox" class="file-cb" value="{f_html}" onclick="toggleSelection(event)" style="width:16px;height:16px;cursor:pointer;margin-right:10px;accent-color:var(--accent);">' if role == 'admin' else ''
-            
-            if is_d:
-                nx = f"{req_dir}/{f}".strip('/')
-                dl_zip_click = f"handleItemClick('/zip/{nx}', 'download', '{lock_id}')"
-                admin_h = f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button><button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>' if role == 'admin' else f'<button class="action-accent" onclick="{dl_zip_click}">📦 Download ZIP</button>'
-                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">📁</span><a href="/?dir={urllib.parse.quote(nx)}" class="file-name">{f_html}{lock_info}</a></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions"><button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
-            else:
-                p_type = get_preview_type(f); dl = urllib.parse.quote(f"/{req_dir}/{f}".replace('//', '/'))
-                p_type_str = p_type if p_type else 'download'
-                p_click = f"handleItemClick('/download{dl}', '{p_type_str}', '{lock_id}')"
-                
-                share_badge = ""
-                view_link_btn = ""
-                if rel in link_map:
-                    tk, data = link_map[rel][0]
-                    pwd_hint = f" (Pass: {data.get('pwd')})" if isinstance(data, dict) and data.get('pwd') else ""
-                    share_badge = f'<span style="color:var(--neon-red); font-size:10px; margin-left:8px; text-shadow:0 0 8px var(--neon-red-glow); white-space:nowrap;">● Shared{pwd_hint if role == "admin" else ""}</span>'
-                    view_link_btn = f'<button class="action-accent" onclick="viewLink(\'{tk}\')">👁️ View Link</button>'
-                        
-                is_text = f.split('.')[-1].lower() in ['txt', 'md', 'py', 'json', 'html', 'css', 'js', 'conf', 'sh']
-                
-                if role == 'admin':
-                    toggle_dl_btn = f'<button class="action-accent" onclick="toggleDl(\'{f_safe_js}\')">{"✅ Enable Download" if is_no_dl else "🚫 Disable Download"}</button>'
-                    s_btns = f'{view_link_btn}<button class="action-accent" onclick="renewItem(\'{f_safe_js}\')">🔄 Renew Link</button><button class="action-red" onclick="unshareItem(\'{f_safe_js}\')">🚫 Unshare</button>' if share_badge else f'<button class="action-accent" onclick="shareItem(\'{f_safe_js}\')">🔗 Public Link</button><button class="action-accent" onclick="limitedShareItem(\'{f_safe_js}\')">⏳ Limited Link</button><button class="action-orange" onclick="pwdShareItem(\'{f_safe_js}\')">🔑 Secure Link</button>'
-                    edit_btn = f'<button class="action-orange" onclick="editItem(\'{f_safe_js}\', \'{lock_id}\')">📝 Edit File</button>' if is_text else ""
-                    admin_h = f'{toggle_dl_btn}{s_btns}{edit_btn}<button class="action-orange" onclick="lockItem(\'{f_safe_js}\')">🔒 Lock / Unlock</button><button class="action-orange" onclick="renameItem(\'{f_safe_js}\')">✏️ Rename</button><button class="action-accent" onclick="copyItem(\'{f_safe_js}\')">📄 Copy</button><button class="action-accent" onclick="moveItem(\'{f_safe_js}\')">✂️ Move</button><button class="action-red" onclick="deleteItem(\'{f_safe_js}\')">🗑️ Delete</button>'
-                else: 
-                    admin_h = ''
-                    
-                dl_btn = f'<button onclick="handleItemClick(\'/download{dl}&dl=1\', \'download\', \'{lock_id}\')" class="btn btn-action" style="padding: 6px 12px; font-size: 11px;">Download</button>' if role == 'admin' or not is_no_dl else ''
-                
-                rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f_html}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
-        
-        html_out = UI_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB'))) \
-                          .replace('{role}', str(role.capitalize())) \
-                          .replace('{breadcrumbs}', str(bc)) \
-                          .replace('{admin_top_btn}', str(select_all_btn + admin_btn)) \
-                          .replace('{admin_log_btn}', str(admin_log_btn)) \
-                          .replace('{disk_dashboard}', str(disk_html)) \
-                          .replace('{admin_upload_area}', str(up_area)) \
-                          .replace('{file_rows}', str(rows)) \
-                          .replace('{current_dir}', str(req_dir))
-                          
-        self._send_resp(html_out)
-
     def _handle_upload(self, curr):
         try:
             client_ip = self.get_client_ip()
@@ -1073,7 +1084,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             boundary = content_type.split('boundary=')[1].encode()
             remainbytes = int(self.headers.get('Content-Length', 0))
             
-            # خواندن خطوط تا رسیدن به اولین boundary
             while remainbytes > 0:
                 line = self.rfile.readline()
                 remainbytes -= len(line)
@@ -1083,7 +1093,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             while remainbytes > 0:
                 filename = None
                 
-                # پارس کردن هدرهای فایل فعلی
                 while remainbytes > 0:
                     line = self.rfile.readline()
                     remainbytes -= len(line)
@@ -1094,7 +1103,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         filename = fn[0]
                         
                 if not filename:
-                    # اسکیپ به boundary بعدی در صورت نبود اسم فایل
                     while remainbytes > 0:
                         line = self.rfile.readline()
                         remainbytes -= len(line)
@@ -1104,7 +1112,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         break
                     continue
                     
-                # نوشتن دیتای فایل
                 out_path = os.path.join(curr, filename)
                 with open(out_path, 'wb') as f:
                     preline = self.rfile.readline()
@@ -1113,7 +1120,6 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                         line = self.rfile.readline()
                         remainbytes -= len(line)
                         if boundary in line:
-                            # رسیدن به انتهای فایل فعلی
                             if preline.endswith(b'\r\n'):
                                 f.write(preline[:-2])
                             elif preline.endswith(b'\n'):
@@ -1134,10 +1140,11 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             print("Upload Error:", e)
             self.send_error(500)
-        
+
     def _send_file(self, p, dl=False, name=None):
-        self.send_response(200); self.send_header("Content-Type", "application/octet-stream")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(os.path.getsize(p)))
         if dl: self.send_header("Content-Disposition", f'attachment; filename="{name or os.path.basename(p)}"')
         self.end_headers()
         with open(p, "rb") as f: shutil.copyfileobj(f, self.wfile)
@@ -1174,11 +1181,10 @@ def main():
             print("[!] No config found! Run Setup first.")
             return
             
-        # روشن کردن سیستم کش دیسک برای سرعت در پس‌زمینه
         threading.Thread(target=calculate_dir_size_bg, args=(cfg['UPLOAD_DIR'],), daemon=True).start()
             
         FileHubHandler.CONFIG = cfg
-        with socketserver.ThreadingTCPServer(("", int(cfg['PORT'])), FileHubHandler) as h:
+        with socketserver.ThreadingTCPServer(("0.0.0.0", int(cfg['PORT'])), FileHubHandler) as h:
             print(f"[*] Hub is running on port {cfg['PORT']}...")
             h.serve_forever()
 
