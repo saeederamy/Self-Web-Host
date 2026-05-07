@@ -288,6 +288,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             </select>
             <div style="display:flex; align-items:center; gap:10px;">
                 <span class="badge">{role}</span>
+                <button onclick="openChangePwd()" style="background:transparent;border:1px solid var(--glass-border);color:var(--text-muted);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:0.3s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">🔑 Password</button>
                 <a href="/logout" class="logout-link">Logout</a>
             </div>
         </div>
@@ -601,6 +602,43 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             
             xhr.send(fd);
         };
+        function openChangePwd() {
+            document.getElementById('changePwdModal').style.display = 'flex';
+            document.getElementById('cpwd-current').value = '';
+            document.getElementById('cpwd-new').value = '';
+            document.getElementById('cpwd-confirm').value = '';
+            document.getElementById('cpwd-msg').textContent = '';
+            document.getElementById('cpwd-current').focus();
+        }
+        function closeChangePwd() {
+            document.getElementById('changePwdModal').style.display = 'none';
+        }
+        function submitChangePwd() {
+            let cur  = document.getElementById('cpwd-current').value;
+            let nw   = document.getElementById('cpwd-new').value;
+            let conf = document.getElementById('cpwd-confirm').value;
+            let msg  = document.getElementById('cpwd-msg');
+            if (!cur || !nw || !conf) { msg.style.color='var(--neon-red)'; msg.textContent='All fields are required.'; return; }
+            if (nw !== conf)          { msg.style.color='var(--neon-red)'; msg.textContent='New passwords do not match.'; return; }
+            if (nw.length < 4)        { msg.style.color='var(--neon-red)'; msg.textContent='Password must be at least 4 characters.'; return; }
+            let btn = document.getElementById('cpwd-btn');
+            btn.disabled = true; btn.textContent = '⏳ Saving...';
+            fetch('/api/change_pwd', {method:'POST', body: new URLSearchParams({current_pwd:cur, new_pwd:nw})})
+              .then(r => r.text()).then(t => {
+                btn.disabled = false; btn.textContent = '✅ Save Password';
+                if (t === 'OK') {
+                    msg.style.color = '#10b981';
+                    msg.textContent = '✔ Password changed successfully!';
+                    setTimeout(closeChangePwd, 1500);
+                } else if (t === 'WRONG') {
+                    msg.style.color = 'var(--neon-red)';
+                    msg.textContent = '✖ Current password is incorrect.';
+                } else {
+                    msg.style.color = 'var(--neon-red)';
+                    msg.textContent = '✖ Error. Try again.';
+                }
+              }).catch(() => { btn.disabled=false; btn.textContent='✅ Save Password'; msg.style.color='var(--neon-red)'; msg.textContent='Connection error.'; });
+        }
         function adminAddUser() {
             let uname = prompt("New username:");
             if (!uname) return;
@@ -627,6 +665,28 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
               .then(() => location.reload());
         }
     </script>
+
+    <div id="changePwdModal" style="display:none;position:fixed;z-index:3000;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(15px);justify-content:center;align-items:center;">
+        <div class="glass-box" style="width:90%;max-width:380px;padding:30px;position:relative;animation:scaleIn .3s cubic-bezier(.175,.885,.32,1.275);">
+            <button onclick="closeChangePwd()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;line-height:1;">×</button>
+            <h3 style="margin:0 0 22px;color:var(--text-main);font-size:16px;font-weight:700;">🔑 Change Password</h3>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">Current Password</label>
+                <input id="cpwd-current" type="password" style="width:100%;padding:12px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);font-size:14px;box-sizing:border-box;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')document.getElementById('cpwd-new').focus()">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">New Password</label>
+                <input id="cpwd-new" type="password" style="width:100%;padding:12px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);font-size:14px;box-sizing:border-box;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')document.getElementById('cpwd-confirm').focus()">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px;">Confirm New Password</label>
+                <input id="cpwd-confirm" type="password" style="width:100%;padding:12px;background:var(--input-bg);border:1px solid var(--glass-border);border-radius:10px;color:var(--text-main);font-size:14px;box-sizing:border-box;font-family:inherit;outline:none;" onkeydown="if(event.key==='Enter')submitChangePwd()">
+            </div>
+            <p id="cpwd-msg" style="margin:0 0 16px;font-size:13px;min-height:18px;text-align:center;"></p>
+            <button id="cpwd-btn" onclick="submitChangePwd()" style="width:100%;padding:13px;background:var(--accent);color:var(--accent-text);border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.3s;box-shadow:0 0 20px var(--accent-glow);">✅ Save Password</button>
+        </div>
+    </div>
+
 </body>
 </html>
 """
@@ -930,46 +990,95 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 if self.is_super_admin():
                     # Super admin: show full user management dashboard
                     users = load_users()
-                    user_rows = ""
-                    for uname, udata in users.items():
-                        used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
-                        limit = udata.get('quota', 0)
-                        limit_str = format_size(limit) if limit > 0 else "Unlimited"
-                        pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
-                        bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
-                        bar_html = f'<div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:4px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;"></div></div>' if limit > 0 else ''
-                        # Retrieve plain password for display (stored hashed - show placeholder note)
-                        pwd_display = udata.get('plain_pwd', '(hidden)')
-                        user_rows += f'''<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--glass-border);gap:10px;flex-wrap:wrap;">
-                            <div style="display:flex;align-items:center;gap:10px;min-width:130px;">
-                                <span style="font-size:20px;">👤</span>
-                                <div>
-                                    <div style="font-weight:700;color:var(--text-main);">{html.escape(uname)}</div>
-                                    <div style="font-size:11px;color:var(--text-muted);">🔑 <span style="font-family:monospace;letter-spacing:1px;">{html.escape(pwd_display)}</span></div>
-                                </div>
+
+                    # ── حساب کلی quota ──
+                    total_quota_allocated = sum(u.get('quota', 0) for u in users.values())
+                    total_quota_used      = sum(get_user_used(self.CONFIG['UPLOAD_DIR'], u) for u in users)
+                    unallocated           = max(0, tot - total_quota_allocated)
+                    alloc_pct             = min(100, int(total_quota_allocated * 100 / tot)) if tot > 0 else 0
+                    used_pct              = min(100, int(total_quota_used      * 100 / tot)) if tot > 0 else 0
+
+                    # ── نوار کلی دیسک ──
+                    disk_bar = f'''
+                        <div style="padding:15px 20px 10px;">
+                            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+                                <span>💾 Disk Usage</span>
+                                <span>{format_size(usd)} used &nbsp;·&nbsp; {format_size(fre)} free &nbsp;·&nbsp; {format_size(tot)} total</span>
                             </div>
-                            <div style="flex:1;min-width:150px;">
-                                <span style="font-size:12px;color:var(--text-muted);">{format_size(used)} / {limit_str}</span>
-                                {bar_html}
+                            <div style="height:8px;background:rgba(255,255,255,0.07);border-radius:6px;overflow:hidden;position:relative;">
+                                <div style="position:absolute;left:0;top:0;height:100%;width:{used_pct}%;background:#f97316;border-radius:6px;transition:width .5s;" title="Actually used: {format_size(total_quota_used)}"></div>
+                                <div style="position:absolute;left:0;top:0;height:100%;width:{alloc_pct}%;background:rgba(59,130,246,0.35);border-radius:6px;" title="Allocated quota: {format_size(total_quota_allocated)}"></div>
                             </div>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button class="btn btn-action" style="font-size:11px;padding:5px 10px;" onclick="adminEditUser('{html.escape(uname)}', {limit})">✏️ Edit</button>
-                                <button class="btn" style="font-size:11px;padding:5px 10px;color:var(--neon-red);border-color:rgba(239,68,68,0.4);" onclick="adminDeleteUser('{html.escape(uname)}')">🗑️ Delete</button>
+                            <div style="display:flex;gap:18px;margin-top:8px;font-size:11px;flex-wrap:wrap;">
+                                <span style="color:#f97316;">■ Used: {format_size(total_quota_used)}</span>
+                                <span style="color:#3b82f6;">■ Allocated: {format_size(total_quota_allocated)}</span>
+                                <span style="color:var(--text-muted);">■ Free (unallocated): {format_size(unallocated)}</span>
                             </div>
                         </div>'''
-                    
+
+                    # ── ردیف‌های کاربران ──
+                    user_rows = ""
+                    for uname, udata in users.items():
+                        used  = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
+                        limit = udata.get('quota', 0)
+                        limit_str  = format_size(limit) if limit > 0 else "Unlimited"
+                        pct        = min(100, int(used * 100 / limit)) if limit > 0 else 0
+                        bar_color  = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
+                        bar_html   = (f'<div style="height:5px;background:rgba(255,255,255,0.08);border-radius:4px;'
+                                      f'margin-top:5px;overflow:hidden;">'
+                                      f'<div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;transition:width .5s;"></div>'
+                                      f'</div>') if limit > 0 else ''
+                        pwd_display = udata.get('plain_pwd', '(set before update)')
+                        user_rows += f'''<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--glass-border);gap:12px;flex-wrap:wrap;">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:160px;">
+                                <span style="font-size:22px;">👤</span>
+                                <div>
+                                    <div style="font-weight:700;color:var(--text-main);font-size:14px;">{html.escape(uname)}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🔑 <span style="font-family:monospace;letter-spacing:1px;color:var(--accent);">{html.escape(pwd_display)}</span></div>
+                                </div>
+                            </div>
+                            <div style="flex:1;min-width:170px;">
+                                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
+                                    <span>{format_size(used)} used</span>
+                                    <span>quota: {limit_str}</span>
+                                </div>
+                                {bar_html}
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+                                <button class="btn btn-action" style="font-size:11px;padding:5px 12px;" onclick="adminEditUser('{html.escape(uname)}', {limit})">✏️ Edit</button>
+                                <button class="btn" style="font-size:11px;padding:5px 12px;color:var(--neon-red);border-color:rgba(239,68,68,0.4);" onclick="adminDeleteUser('{html.escape(uname)}')">🗑️ Delete</button>
+                            </div>
+                        </div>'''
+
                     add_user_btn = '<button class="btn btn-action" style="margin:12px 16px;font-size:13px;" onclick="adminAddUser()">➕ Add New User</button>'
-                    
+
                     disk_html = f"""<div class="glass-box" style="margin-bottom:20px;">
-                        <div style="display:flex; justify-content:space-around; align-items:center; padding:15px; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--glass-border);">
-                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div>
-                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div>
-                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div>
-                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Registered Users</span><br><span style="font-size:15px; font-weight:800; color:var(--accent);">{len(users)}</span></div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0;border-bottom:1px solid var(--glass-border);">
+                            <div style="text-align:center;padding:14px 10px;border-right:1px solid var(--glass-border);">
+                                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Total Disk</div>
+                                <div style="font-size:16px;font-weight:800;color:var(--text-main);margin-top:4px;">{format_size(tot)}</div>
+                            </div>
+                            <div style="text-align:center;padding:14px 10px;border-right:1px solid var(--glass-border);">
+                                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Free Disk</div>
+                                <div style="font-size:16px;font-weight:800;color:#10b981;margin-top:4px;">{format_size(fre)}</div>
+                            </div>
+                            <div style="text-align:center;padding:14px 10px;border-right:1px solid var(--glass-border);">
+                                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Allocated</div>
+                                <div style="font-size:16px;font-weight:800;color:#3b82f6;margin-top:4px;">{format_size(total_quota_allocated)}</div>
+                            </div>
+                            <div style="text-align:center;padding:14px 10px;border-right:1px solid var(--glass-border);">
+                                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Actually Used</div>
+                                <div style="font-size:16px;font-weight:800;color:#f97316;margin-top:4px;">{format_size(total_quota_used)}</div>
+                            </div>
+                            <div style="text-align:center;padding:14px 10px;">
+                                <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;">Users</div>
+                                <div style="font-size:16px;font-weight:800;color:var(--accent);margin-top:4px;">{len(users)}</div>
+                            </div>
                         </div>
-                        <div style="padding:8px 0;">
+                        {disk_bar}
+                        <div style="padding:8px 0;border-top:1px solid var(--glass-border);margin-top:4px;">
                             <div style="padding:10px 16px;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">👥 User Management</div>
-                            {user_rows if user_rows else '<div style="padding:12px 16px;color:var(--text-muted);font-size:13px;">No users yet. Add one below.</div>'}
+                            {user_rows if user_rows else '<div style="padding:12px 16px;color:var(--text-muted);font-size:13px;">No users yet.</div>'}
                             {add_user_btn}
                         </div>
                     </div>"""
@@ -1139,6 +1248,47 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             self._handle_upload(curr)
             return
         
+        elif parsed.path == "/api/change_pwd":
+            # Any logged-in user can change their own password
+            uname = self.get_logged_username()
+            if not uname:
+                self.send_response(403); self.end_headers(); return
+            l = int(self.headers.get('Content-Length', 0))
+            data = urllib.parse.parse_qs(self.rfile.read(l).decode())
+            current_pwd = data.get('current_pwd', [''])[0]
+            new_pwd     = data.get('new_pwd',     [''])[0]
+            if not current_pwd or not new_pwd:
+                self.send_response(400); self.end_headers(); self.wfile.write(b"Missing fields"); return
+
+            if self.is_super_admin():
+                # Super admin: verify against ADMIN_PWD in config
+                if hashlib.sha256(current_pwd.encode()).hexdigest() != hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest():
+                    self.send_response(200); self.end_headers(); self.wfile.write(b"WRONG"); return
+                # Update config file
+                lines = open(CONFIG_FILE, 'r', encoding='utf-8').readlines()
+                with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                    for line in lines:
+                        if line.startswith('ADMIN_PWD='):
+                            f.write(f'ADMIN_PWD={new_pwd}\n')
+                        else:
+                            f.write(line)
+                # Reload config in handler
+                FileHubHandler.CONFIG = load_config()
+                add_log(client_ip, "Admin changed their password")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+            else:
+                # Regular user: verify against users.json
+                users = load_users()
+                if uname not in users:
+                    self.send_response(403); self.end_headers(); return
+                if users[uname]['password'] != hashlib.sha256(current_pwd.encode()).hexdigest():
+                    self.send_response(200); self.end_headers(); self.wfile.write(b"WRONG"); return
+                users[uname]['password']  = hashlib.sha256(new_pwd.encode()).hexdigest()
+                users[uname]['plain_pwd'] = new_pwd
+                save_users(users)
+                add_log(client_ip, f"User {uname} changed their password")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+
         elif parsed.path == "/api/users" and self.is_super_admin():
             l = int(self.headers.get('Content-Length', 0))
             data = urllib.parse.parse_qs(self.rfile.read(l).decode())
