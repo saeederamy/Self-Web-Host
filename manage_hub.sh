@@ -275,6 +275,7 @@ if uname in users:
 else:
     users[uname] = {
         "password": hashlib.sha256(pwd.encode()).hexdigest(),
+        "plain_pwd": pwd,
         "quota": quota_mb * 1024 * 1024,
         "created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     }
