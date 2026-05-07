@@ -295,7 +295,7 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
     </div>
     
     <div class="container">
-        <input type="text" id="search" class="search-box glass-box" placeholder="🔍 Search files..." onkeyup="doSearch()">
+        <input type="text" id="search" class="search-box glass-box" placeholder="🔍 Search files..." onkeyup="doSearch()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="hub_search_field">
         <div class="nav-row">
             <div class="breadcrumbs">{breadcrumbs}</div>
             <div class="nav-buttons">
@@ -639,6 +639,17 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
                 }
               }).catch(() => { btn.disabled=false; btn.textContent='✅ Save Password'; msg.style.color='var(--neon-red)'; msg.textContent='Connection error.'; });
         }
+        // Prevent Chrome from autofilling the search box with saved credentials
+        (function() {
+            var s = document.getElementById('search');
+            if (!s) return;
+            s.setAttribute('autocomplete', 'off');
+            // Chrome ignores autocomplete=off on text fields near password fields,
+            // so we briefly make it readonly then restore on first interaction
+            s.setAttribute('readonly', 'readonly');
+            setTimeout(function() { s.removeAttribute('readonly'); }, 200);
+            s.addEventListener('focus', function() { this.removeAttribute('readonly'); });
+        })();
         function adminAddUser() {
             let uname = prompt("New username:");
             if (!uname) return;
@@ -899,15 +910,29 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     if req_pwd != pwd:
                         self._send_resp(f'<style>{COMMON_STYLE}</style><body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;"><script>let p=prompt("Secure Link - Password Required:");if(p)window.location.href="?pwd="+p;else document.body.innerHTML="<div class=\'glass-box\' style=\'padding:30px;color:var(--neon-red);\'>Access Denied</div>";</script></body>')
                         return
-                        
-                target = self.get_safe_path(target_rel)
+                
+                # Use base upload dir directly — no login needed for public links
+                base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
+                target = os.path.abspath(os.path.join(base, target_rel.strip('/')))
+                if not target.startswith(base):
+                    return self.send_error(403)
                 if os.path.isfile(target):
                     add_log(client_ip, f"Public Link Download: {target_rel}")
                     if limit > 0:
                         lns[tk]['limit'] -= 1
                         if lns[tk]['limit'] <= 0: del lns[tk]
                         save_json(lns, LINKS_FILE)
-                    return self._send_file(target, dl=True)
+                    fname = os.path.basename(target)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Length", str(os.path.getsize(target)))
+                    self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+                    # Cache-control: no-store so subscription clients always get fresh content
+                    self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+                    self.send_header("Pragma", "no-cache")
+                    self.end_headers()
+                    with open(target, "rb") as f: shutil.copyfileobj(f, self.wfile)
+                    return
             return self.send_error(404)
         
         role = self.get_role()
