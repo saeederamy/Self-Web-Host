@@ -766,15 +766,15 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
 
     def get_role(self):
         ck = self.headers.get("Cookie", "")
-        # Admin check (legacy config-based)
+        # Super admin check (config-based)
         if f"auth={hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest()}" in ck:
             return "admin"
-        # Multi-user check
+        # Multi-user: all registered users get admin role within their own space
         users = load_users()
         for uname, udata in users.items():
             token = hashlib.sha256(f"{uname}:{udata['password']}".encode()).hexdigest()
             if f"auth_user={token}" in ck:
-                return "user"
+                return "admin"
         return None
 
     def get_logged_username(self):
@@ -788,10 +788,14 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 return uname
         return None
 
+    def is_super_admin(self):
+        """True only for the main admin (config-based), not regular users."""
+        ck = self.headers.get("Cookie", "")
+        return f"auth={hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest()}" in ck
+
     def get_safe_path(self, req_dir):
-        role = self.get_role()
         uname = self.get_logged_username()
-        if role == 'admin':
+        if self.is_super_admin():
             base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
         else:
             base = get_user_dir(self.CONFIG['UPLOAD_DIR'], uname)
@@ -799,9 +803,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         return t if t.startswith(base) else base
 
     def get_base_dir(self):
-        role = self.get_role()
         uname = self.get_logged_username()
-        if role == 'admin':
+        if self.is_super_admin():
             return os.path.abspath(self.CONFIG['UPLOAD_DIR'])
         else:
             return get_user_dir(self.CONFIG['UPLOAD_DIR'], uname)
@@ -911,71 +914,79 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         pts = [p for p in req_dir.split('/') if p]; bc = f'<a href="/">Root</a>'; acc = ""
         for p in pts: acc += f"/{p}"; bc += f' <span style="opacity:0.3">/</span> <a href="/?dir={urllib.parse.quote(acc)}">{p}</a>'
         
-        select_all_btn = '<label class="btn" style="padding:8px 12px; gap:6px;"><input type="checkbox" onchange="toggleAll(event)" style="accent-color:var(--accent);"> Select All</label>' if role == 'admin' else ''
-        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>' if role == 'admin' else ''
-        admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if role == 'admin' else ''
+        select_all_btn = '<label class="btn" style="padding:8px 12px; gap:6px;"><input type="checkbox" onchange="toggleAll(event)" style="accent-color:var(--accent);"> Select All</label>'
+        admin_btn = '<button class="btn btn-action" onclick="createFolder()">+ New Folder</button><button class="btn btn-action" onclick="createFile()" style="margin-left:12px;">+ New File</button>'
+        admin_log_btn = '<button class="btn" style="background:rgba(16, 185, 129, 0.15); color:var(--neon-green); border-color:rgba(16, 185, 129, 0.4);" onclick="openLogs()">📜 System Logs</button>' if self.is_super_admin() else ''
         
-        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>' if role == 'admin' else ''
+        up_area = '<div class="glass-box" id="drop-zone" onclick="if(event.target.tagName !== \'BUTTON\') document.getElementById(\'file-input\').click();" ondragover="event.preventDefault(); this.style.borderColor=\'var(--accent)\';" ondragleave="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\';" ondrop="event.preventDefault(); this.style.borderColor=\'var(--glass-border)\'; window.handleFilesSelect(event.dataTransfer.files);" style="padding:25px; text-align:center; margin-bottom:25px; cursor:pointer; border: 2px dashed var(--glass-border); transition: 0.3s;"><p id="drop-text" style="font-size:14px; font-weight:500; color:var(--text-muted); margin:0;">☁️ Drag & Drop files here or click to select</p><input type="file" id="file-input" style="display:none;" multiple onchange="window.handleFilesSelect(this.files)"><div id="selected-files" style="display:none; margin-top:15px; font-size:13px; color:var(--text-main); max-height:100px; overflow-y:auto; text-align:left; padding:10px; background:rgba(0,0,0,0.3); border-radius:8px;"></div><button id="btn-start-upload" class="btn btn-action" style="display:none; margin-top:15px; width:100%; padding:12px;" onclick="window.startHubUpload(event)">🚀 Start Upload</button><button id="btn-confirm-publish" class="btn" style="display:none; margin-top:15px; width:100%; padding:12px; background:#10b981; color:white; border-color:#10b981; box-shadow:0 0 20px rgba(16, 185, 129, 0.4);" onclick="location.reload()">✅ Confirm & Publish</button><div id="progress-wrapper" style="display:none; height:4px; background:rgba(0,0,0,0.5); margin-top:15px; border-radius:10px; overflow:hidden;"><div id="progress-bar" style="width:0; height:100%; background:var(--accent); transition:width 0.2s;"></div></div></div>'
         
         disk_html = ""
         if role == 'admin':
             try:
                 tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
                 dir_size = _HUB_SIZE_CACHE
-                users = load_users()
-                # Build per-user rows
-                user_rows = ""
-                for uname, udata in users.items():
-                    used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
-                    limit = udata.get('quota', 0)
-                    limit_str = format_size(limit) if limit > 0 else "Unlimited"
-                    pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
-                    bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
-                    bar_html = f'<div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:4px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;"></div></div>' if limit > 0 else ''
-                    user_rows += f'''<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--glass-border);gap:10px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:10px;min-width:120px;">
-                            <span style="font-size:20px;">👤</span>
-                            <span style="font-weight:600;color:var(--text-main);">{html.escape(uname)}</span>
-                        </div>
-                        <div style="flex:1;min-width:150px;">
-                            <span style="font-size:12px;color:var(--text-muted);">{format_size(used)} / {limit_str}</span>
-                            {bar_html}
-                        </div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn btn-action" style="font-size:11px;padding:5px 10px;" onclick="adminEditUser('{html.escape(uname)}', {limit})">✏️ Edit</button>
-                            <button class="btn" style="font-size:11px;padding:5px 10px;color:var(--neon-red);border-color:rgba(239,68,68,0.4);" onclick="adminDeleteUser('{html.escape(uname)}')">🗑️ Delete</button>
-                        </div>
-                    </div>'''
+                uname_logged = self.get_logged_username()
                 
-                add_user_btn = '''<button class="btn btn-action" style="margin:12px 16px;font-size:13px;" onclick="adminAddUser()">➕ Add New User</button>'''
-                
-                disk_html = f"""<div class="glass-box" style="margin-bottom:20px;">
-                    <div style="display:flex; justify-content:space-around; align-items:center; padding:15px; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--glass-border);">
-                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div>
-                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div>
-                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div>
-                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Registered Users</span><br><span style="font-size:15px; font-weight:800; color:var(--accent);">{len(users)}</span></div>
-                    </div>
-                    <div style="padding:8px 0;">
-                        <div style="padding:10px 16px;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">👥 User Management</div>
-                        {user_rows if user_rows else '<div style="padding:12px 16px;color:var(--text-muted);font-size:13px;">No users yet. Add one below.</div>'}
-                        {add_user_btn}
-                    </div>
-                </div>"""
+                if self.is_super_admin():
+                    # Super admin: show full user management dashboard
+                    users = load_users()
+                    user_rows = ""
+                    for uname, udata in users.items():
+                        used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
+                        limit = udata.get('quota', 0)
+                        limit_str = format_size(limit) if limit > 0 else "Unlimited"
+                        pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
+                        bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
+                        bar_html = f'<div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:4px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;"></div></div>' if limit > 0 else ''
+                        # Retrieve plain password for display (stored hashed - show placeholder note)
+                        pwd_display = udata.get('plain_pwd', '(hidden)')
+                        user_rows += f'''<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--glass-border);gap:10px;flex-wrap:wrap;">
+                            <div style="display:flex;align-items:center;gap:10px;min-width:130px;">
+                                <span style="font-size:20px;">👤</span>
+                                <div>
+                                    <div style="font-weight:700;color:var(--text-main);">{html.escape(uname)}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">🔑 <span style="font-family:monospace;letter-spacing:1px;">{html.escape(pwd_display)}</span></div>
+                                </div>
+                            </div>
+                            <div style="flex:1;min-width:150px;">
+                                <span style="font-size:12px;color:var(--text-muted);">{format_size(used)} / {limit_str}</span>
+                                {bar_html}
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button class="btn btn-action" style="font-size:11px;padding:5px 10px;" onclick="adminEditUser('{html.escape(uname)}', {limit})">✏️ Edit</button>
+                                <button class="btn" style="font-size:11px;padding:5px 10px;color:var(--neon-red);border-color:rgba(239,68,68,0.4);" onclick="adminDeleteUser('{html.escape(uname)}')">🗑️ Delete</button>
+                            </div>
+                        </div>'''
+                    
+                    add_user_btn = '<button class="btn btn-action" style="margin:12px 16px;font-size:13px;" onclick="adminAddUser()">➕ Add New User</button>'
+                    
+                    disk_html = f"""<div class="glass-box" style="margin-bottom:20px;">
+                        <div style="display:flex; justify-content:space-around; align-items:center; padding:15px; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--glass-border);">
+                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div>
+                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div>
+                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div>
+                            <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Registered Users</span><br><span style="font-size:15px; font-weight:800; color:var(--accent);">{len(users)}</span></div>
+                        </div>
+                        <div style="padding:8px 0;">
+                            <div style="padding:10px 16px;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">👥 User Management</div>
+                            {user_rows if user_rows else '<div style="padding:12px 16px;color:var(--text-muted);font-size:13px;">No users yet. Add one below.</div>'}
+                            {add_user_btn}
+                        </div>
+                    </div>"""
+                else:
+                    # Regular user with admin role: show their own storage info
+                    users = load_users()
+                    if uname_logged in users:
+                        used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname_logged)
+                        limit = users[uname_logged].get('quota', 0)
+                        limit_str = format_size(limit) if limit > 0 else "Unlimited"
+                        pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
+                        bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
+                        bar_html = f'<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:6px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;transition:width 0.5s;"></div></div>' if limit > 0 else ''
+                        disk_html = f'<div class="glass-box" style="display:flex;align-items:center;gap:20px;padding:15px 20px;margin-bottom:20px;flex-wrap:wrap;"><span style="font-size:24px;">💾</span><div style="flex:1;min-width:150px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Your Storage</span><br><span style="font-weight:700;color:var(--text-main);">{format_size(used)}</span> <span style="color:var(--text-muted);font-size:13px;">/ {limit_str}</span>{bar_html}</div></div>'
+                        disk_html += f'<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div></div>'
             except Exception as ex:
                 disk_html = ""
-        elif role == 'user':
-            # Show user's own quota
-            uname = self.get_logged_username()
-            users = load_users()
-            if uname in users:
-                used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
-                limit = users[uname].get('quota', 0)
-                limit_str = format_size(limit) if limit > 0 else "Unlimited"
-                pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
-                bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
-                bar_html = f'<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:6px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;transition:width 0.5s;"></div></div>' if limit > 0 else ''
-                disk_html = f'<div class="glass-box" style="display:flex;align-items:center;gap:20px;padding:15px 20px;margin-bottom:20px;flex-wrap:wrap;"><span style="font-size:24px;">💾</span><div style="flex:1;min-width:150px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Your Storage</span><br><span style="font-weight:700;color:var(--text-main);">{format_size(used)}</span> <span style="color:var(--text-muted);font-size:13px;">/ {limit_str}</span>{bar_html}</div></div>'
 
         lns = load_json(LINKS_FILE)
         locks = load_json(LOCKS_FILE)
@@ -1053,8 +1064,10 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                 
                 rows += f'<div class="file-item" data-name="{f_html}"><div class="file-info">{cb_html}<span style="font-size:18px; flex-shrink:0;">{get_icon(f, False)}</span><span onclick="{p_click}" class="file-name">{f_html}{lock_info}{share_badge}{stream_badge}</span></div><div class="file-meta"><span>{date}</span><span style="width:60px; text-align:right;">{size}</span></div><div class="actions">{dl_btn}<button class="kebab-btn" onclick="toggleMenu(event, \'m-{f_html}\')">⋮</button><div class="dropdown-content" id="m-{f_html}">{admin_h}</div></div></div>'
         
+        uname_display = self.get_logged_username() or "Admin"
+        role_badge = "⭐ Admin" if self.is_super_admin() else f"👤 {uname_display}"
         html_out = UI_HTML.replace('{site_name}', str(self.CONFIG.get('SITE_NAME', 'BLACK HUB'))) \
-                          .replace('{role}', str(role.capitalize())) \
+                          .replace('{role}', role_badge) \
                           .replace('{breadcrumbs}', str(bc)) \
                           .replace('{admin_top_btn}', str(select_all_btn + admin_btn)) \
                           .replace('{admin_log_btn}', str(admin_log_btn)) \
@@ -1109,8 +1122,8 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         if parsed.path == "/upload": 
             q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]
             curr = self.get_safe_path(q)
-            # Quota check for regular users
-            if self.get_role() == 'user':
+            # Quota check for regular users (not super admin)
+            if not self.is_super_admin():
                 uname = self.get_logged_username()
                 users = load_users()
                 if uname in users:
@@ -1126,7 +1139,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             self._handle_upload(curr)
             return
         
-        elif parsed.path == "/api/users" and self.get_role() == "admin":
+        elif parsed.path == "/api/users" and self.is_super_admin():
             l = int(self.headers.get('Content-Length', 0))
             data = urllib.parse.parse_qs(self.rfile.read(l).decode())
             act = data.get('action', [''])[0]
@@ -1142,6 +1155,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     self.send_response(200); self.end_headers(); self.wfile.write(b"EXISTS"); return
                 users[uname] = {
                     'password': hashlib.sha256(pwd.encode()).hexdigest(),
+                    'plain_pwd': pwd,
                     'quota': quota_mb * 1024 * 1024,
                     'created': datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
                 }
@@ -1166,6 +1180,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
                     users[uname]['quota'] = quota_mb * 1024 * 1024
                     if new_pwd:
                         users[uname]['password'] = hashlib.sha256(new_pwd.encode()).hexdigest()
+                        users[uname]['plain_pwd'] = new_pwd
                     save_users(users)
                     add_log(client_ip, f"Admin Edited User: {uname}")
                 self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
