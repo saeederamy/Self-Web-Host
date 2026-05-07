@@ -53,6 +53,8 @@ show_menu() {
     echo -e " ${YELLOW}7)${NC} 🔐 Setup Nginx & Auto SSL (Certbot)"
     echo -e " ${YELLOW}8)${NC} 🔐 Setup Nginx & Manual SSL"
     echo -e " ${YELLOW}9)${NC} 🔑 Show Credentials & Info"
+    echo -e "${YELLOW}11)${NC} 👤 Add New User"
+    echo -e "${YELLOW}12)${NC} 📋 List Users & Storage Info"
     echo -e "${RED}10)${NC} 🗑️  Full Uninstall (Nuclear Option)"
     echo -e "  ${RED}0)${NC} ❌ Exit"
     echo -e "-----------------------------------------"
@@ -60,7 +62,7 @@ show_menu() {
 
 while true; do
     show_menu
-    opt=$(ask "Choose an option (0-10): ")
+    opt=$(ask "Choose an option (0-12): ")
 
     case "$opt" in
         1) 
@@ -245,6 +247,93 @@ EOF
                 echo -e "${RED}Uninstall complete. The 'black-hub' command has been removed. Bye!${NC}"
                 exit 0
             fi 
+            ;;
+        11)
+            echo -e "${CYAN}--- Add New User ---${NC}"
+            USERNAME=$(ask "Username: ")
+            [ -z "$USERNAME" ] && continue
+            PASSWORD=$(ask "Password: ")
+            [ -z "$PASSWORD" ] && continue
+            QUOTA_MB=$(ask "Storage quota in MB (0 = unlimited): ")
+            QUOTA_MB=${QUOTA_MB:-0}
+            
+            USERS_FILE="$WORKING_DIR/users.json"
+            
+            # Check if python3 and jq available, use python3 for JSON manipulation
+            python3 - <<PYEOF
+import json, hashlib, os, datetime
+
+users_file = "$USERS_FILE"
+users = json.load(open(users_file)) if os.path.exists(users_file) else {}
+
+uname = "$USERNAME"
+pwd = "$PASSWORD"
+quota_mb = int("$QUOTA_MB")
+
+if uname in users:
+    print("EXISTS")
+else:
+    users[uname] = {
+        "password": hashlib.sha256(pwd.encode()).hexdigest(),
+        "quota": quota_mb * 1024 * 1024,
+        "created": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+    json.dump(users, open(users_file, "w"))
+    # Create user directory
+    user_dir = os.path.join("$WORKING_DIR", "uploads", "users", uname)
+    os.makedirs(user_dir, exist_ok=True)
+    print("OK")
+PYEOF
+            
+            RESULT=$?
+            if [ $RESULT -eq 0 ]; then
+                echo -e "${GREEN}[✔] User '$USERNAME' added successfully!${NC}"
+            else
+                echo -e "${RED}[!] Failed to add user.${NC}"
+            fi
+            sleep 2
+            ;;
+        12)
+            echo -e "${YELLOW}--- Users & Storage Info ---${NC}"
+            USERS_FILE="$WORKING_DIR/users.json"
+            UPLOAD_DIR="$WORKING_DIR/uploads"
+            
+            python3 - <<PYEOF
+import json, os
+
+users_file = "$USERS_FILE"
+upload_dir = "$UPLOAD_DIR"
+
+if not os.path.exists(users_file):
+    print("No users found. Add users with option 11.")
+else:
+    users = json.load(open(users_file))
+    if not users:
+        print("No users registered yet.")
+    else:
+        print(f"{'USERNAME':<20} {'QUOTA':<15} {'USED':<15} {'CREATED':<20}")
+        print("-" * 70)
+        for uname, udata in users.items():
+            quota = udata.get('quota', 0)
+            quota_str = f"{quota // (1024*1024)} MB" if quota > 0 else "Unlimited"
+            
+            user_dir = os.path.join(upload_dir, "users", uname)
+            used = 0
+            if os.path.exists(user_dir):
+                for r, _, fs in os.walk(user_dir):
+                    for fn in fs:
+                        fp = os.path.join(r, fn)
+                        if not os.path.islink(fp):
+                            try: used += os.path.getsize(fp)
+                            except: pass
+            
+            used_str = f"{used / (1024*1024):.1f} MB"
+            created = udata.get('created', 'N/A')
+            print(f"{uname:<20} {quota_str:<15} {used_str:<15} {created:<20}")
+PYEOF
+            
+            echo ""
+            ask "Press Enter to return to menu..."
             ;;
         0) clear; exit 0 ;;
         *) echo -e "${RED}Invalid option!${NC}"; sleep 1 ;;
