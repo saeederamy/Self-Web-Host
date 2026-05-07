@@ -21,6 +21,7 @@ LOCKS_FILE = "folder_locks.json"
 LOG_FILE = "access_log.txt"
 BLOCK_FILE = "ip_blocks.json"
 NODL_FILE = "no_download.json"
+USERS_FILE = "users.json"
 
 # لیست سفید: این آی‌پی‌ها هرگز بن نمی‌شوند
 WHITELIST_IPS = ['127.0.0.1', 'localhost', '::1']
@@ -87,6 +88,29 @@ def load_config():
         if "=" in line and not line.startswith("#"):
             k, v = line.strip().split("=", 1); cfg[k] = v
     return cfg
+
+def load_users():
+    return load_json(USERS_FILE)
+
+def save_users(users):
+    save_json(users, USERS_FILE)
+
+def get_user_dir(base_upload_dir, username):
+    d = os.path.join(os.path.abspath(base_upload_dir), "users", username)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+def get_user_used(base_upload_dir, username):
+    d = os.path.join(os.path.abspath(base_upload_dir), "users", username)
+    if not os.path.exists(d): return 0
+    sz = 0
+    for r, _, fs in os.walk(d):
+        for n in fs:
+            fp = os.path.join(r, n)
+            if not os.path.islink(fp):
+                try: sz += os.path.getsize(fp)
+                except: pass
+    return sz
 
 def format_size(size):
     for unit in ['B', 'KB', 'MB', 'GB']:
@@ -577,6 +601,31 @@ iframe, video, img { border-radius: 12px; border: 1px solid var(--glass-border);
             
             xhr.send(fd);
         };
+        function adminAddUser() {
+            let uname = prompt("New username:");
+            if (!uname) return;
+            let pwd = prompt("Password for " + uname + ":");
+            if (!pwd) return;
+            let quota = prompt("Storage quota in MB (0 = unlimited):", "0") || "0";
+            fetch('/api/users', {method:'POST', body: new URLSearchParams({action:'add', username:uname, password:pwd, quota_mb:quota})})
+              .then(r => r.text()).then(t => {
+                if(t === "EXISTS") { alert("User '" + uname + "' already exists!"); return; }
+                location.reload();
+              });
+        }
+        function adminEditUser(uname, currentQuotaBytes) {
+            let quotaMB = Math.round(currentQuotaBytes / (1024*1024));
+            let newQuota = prompt("New quota in MB for " + uname + " (0 = unlimited):", quotaMB);
+            if (newQuota === null) return;
+            let newPwd = prompt("New password (leave blank to keep current):", "");
+            fetch('/api/users', {method:'POST', body: new URLSearchParams({action:'edit', username:uname, quota_mb:newQuota, password:newPwd || ''})})
+              .then(() => location.reload());
+        }
+        function adminDeleteUser(uname) {
+            if (!confirm("Delete user '" + uname + "'? This will NOT delete their files.")) return;
+            fetch('/api/users', {method:'POST', body: new URLSearchParams({action:'delete', username:uname})})
+              .then(() => location.reload());
+        }
     </script>
 </body>
 </html>
@@ -665,7 +714,8 @@ LOGIN_HTML = """
     <div class="login-card">
         <h2>{site_name}</h2>
         <form method="POST" action="/login">
-            <input type="password" name="password" placeholder="••••••••" required autofocus>
+            <input type="text" name="username" placeholder="USERNAME" required autofocus style="letter-spacing:2px; margin-bottom:15px;">
+            <input type="password" name="password" placeholder="••••••••" required>
             <button type="submit">Login</button>
         </form>
         
@@ -716,17 +766,49 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
 
     def get_role(self):
         ck = self.headers.get("Cookie", "")
-        if f"auth={hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest()}" in ck: return "admin"
-        if f"auth={hashlib.sha256(self.CONFIG['GUEST_PWD'].encode()).hexdigest()}" in ck: return "user"
+        # Admin check (legacy config-based)
+        if f"auth={hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest()}" in ck:
+            return "admin"
+        # Multi-user check
+        users = load_users()
+        for uname, udata in users.items():
+            token = hashlib.sha256(f"{uname}:{udata['password']}".encode()).hexdigest()
+            if f"auth_user={token}" in ck:
+                return "user"
+        return None
+
+    def get_logged_username(self):
+        ck = self.headers.get("Cookie", "")
+        if f"auth={hashlib.sha256(self.CONFIG['ADMIN_PWD'].encode()).hexdigest()}" in ck:
+            return "admin"
+        users = load_users()
+        for uname, udata in users.items():
+            token = hashlib.sha256(f"{uname}:{udata['password']}".encode()).hexdigest()
+            if f"auth_user={token}" in ck:
+                return uname
         return None
 
     def get_safe_path(self, req_dir):
-        base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
+        role = self.get_role()
+        uname = self.get_logged_username()
+        if role == 'admin':
+            base = os.path.abspath(self.CONFIG['UPLOAD_DIR'])
+        else:
+            base = get_user_dir(self.CONFIG['UPLOAD_DIR'], uname)
         t = os.path.abspath(os.path.join(base, req_dir.strip('/')))
         return t if t.startswith(base) else base
 
+    def get_base_dir(self):
+        role = self.get_role()
+        uname = self.get_logged_username()
+        if role == 'admin':
+            return os.path.abspath(self.CONFIG['UPLOAD_DIR'])
+        else:
+            return get_user_dir(self.CONFIG['UPLOAD_DIR'], uname)
+
     def get_rel(self, p):
-        r = os.path.relpath(p, os.path.abspath(self.CONFIG['UPLOAD_DIR'])).replace('\\', '/')
+        base = self.get_base_dir()
+        r = os.path.relpath(p, base).replace('\\', '/')
         return "" if r == "." else r
 
     def do_GET(self):
@@ -809,6 +891,7 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             add_log(client_ip, "Logged Out")
             self.send_response(302)
             self.send_header("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly")
+            self.send_header("Set-Cookie", "auth_user=; Max-Age=0; Path=/; HttpOnly")
             self.send_header("Location", "/")
             self.end_headers()
 
@@ -839,8 +922,60 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
             try:
                 tot, usd, fre = shutil.disk_usage(self.CONFIG['UPLOAD_DIR'])
                 dir_size = _HUB_SIZE_CACHE
-                disk_html = f"""<div class="glass-box" style="display:flex; justify-content:space-around; align-items:center; padding:15px; margin-bottom:20px; flex-wrap:wrap; gap:10px;"><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div><div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div></div>"""
-            except: disk_html = ""
+                users = load_users()
+                # Build per-user rows
+                user_rows = ""
+                for uname, udata in users.items():
+                    used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
+                    limit = udata.get('quota', 0)
+                    limit_str = format_size(limit) if limit > 0 else "Unlimited"
+                    pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
+                    bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
+                    bar_html = f'<div style="height:4px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:4px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;"></div></div>' if limit > 0 else ''
+                    user_rows += f'''<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--glass-border);gap:10px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:120px;">
+                            <span style="font-size:20px;">👤</span>
+                            <span style="font-weight:600;color:var(--text-main);">{html.escape(uname)}</span>
+                        </div>
+                        <div style="flex:1;min-width:150px;">
+                            <span style="font-size:12px;color:var(--text-muted);">{format_size(used)} / {limit_str}</span>
+                            {bar_html}
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn btn-action" style="font-size:11px;padding:5px 10px;" onclick="adminEditUser('{html.escape(uname)}', {limit})">✏️ Edit</button>
+                            <button class="btn" style="font-size:11px;padding:5px 10px;color:var(--neon-red);border-color:rgba(239,68,68,0.4);" onclick="adminDeleteUser('{html.escape(uname)}')">🗑️ Delete</button>
+                        </div>
+                    </div>'''
+                
+                add_user_btn = '''<button class="btn btn-action" style="margin:12px 16px;font-size:13px;" onclick="adminAddUser()">➕ Add New User</button>'''
+                
+                disk_html = f"""<div class="glass-box" style="margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-around; align-items:center; padding:15px; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--glass-border);">
+                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Total Drive Space</span><br><span style="font-size:15px; font-weight:800; color:var(--text-main);">{format_size(tot)}</span></div>
+                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Free Space Remaining</span><br><span style="font-size:15px; font-weight:800; color:#10b981;">{format_size(fre)}</span></div>
+                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Files in Hub</span><br><span style="font-size:15px; font-weight:800; color:var(--neon-orange);">{format_size(dir_size)}</span></div>
+                        <div style="text-align:center;"><span style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Registered Users</span><br><span style="font-size:15px; font-weight:800; color:var(--accent);">{len(users)}</span></div>
+                    </div>
+                    <div style="padding:8px 0;">
+                        <div style="padding:10px 16px;font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">👥 User Management</div>
+                        {user_rows if user_rows else '<div style="padding:12px 16px;color:var(--text-muted);font-size:13px;">No users yet. Add one below.</div>'}
+                        {add_user_btn}
+                    </div>
+                </div>"""
+            except Exception as ex:
+                disk_html = ""
+        elif role == 'user':
+            # Show user's own quota
+            uname = self.get_logged_username()
+            users = load_users()
+            if uname in users:
+                used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
+                limit = users[uname].get('quota', 0)
+                limit_str = format_size(limit) if limit > 0 else "Unlimited"
+                pct = min(100, int(used * 100 / limit)) if limit > 0 else 0
+                bar_color = "#ef4444" if pct > 85 else "#f97316" if pct > 60 else "#10b981"
+                bar_html = f'<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:4px;margin-top:6px;overflow:hidden;"><div style="width:{pct}%;height:100%;background:{bar_color};border-radius:4px;transition:width 0.5s;"></div></div>' if limit > 0 else ''
+                disk_html = f'<div class="glass-box" style="display:flex;align-items:center;gap:20px;padding:15px 20px;margin-bottom:20px;flex-wrap:wrap;"><span style="font-size:24px;">💾</span><div style="flex:1;min-width:150px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;">Your Storage</span><br><span style="font-weight:700;color:var(--text-main);">{format_size(used)}</span> <span style="color:var(--text-muted);font-size:13px;">/ {limit_str}</span>{bar_html}</div></div>'
 
         lns = load_json(LINKS_FILE)
         locks = load_json(LOCKS_FILE)
@@ -937,28 +1072,105 @@ class FileHubHandler(http.server.BaseHTTPRequestHandler):
         
         if parsed.path == "/login":
             l = int(self.headers.get('Content-Length', 0))
-            pwd = urllib.parse.parse_qs(self.rfile.read(l).decode()).get('password', [''])[0]
-            if pwd == self.CONFIG['ADMIN_PWD'] or pwd == self.CONFIG['GUEST_PWD']:
+            body = urllib.parse.parse_qs(self.rfile.read(l).decode())
+            username = body.get('username', [''])[0].strip()
+            pwd = body.get('password', [''])[0]
+            
+            # Admin login
+            if username == 'admin' and pwd == self.CONFIG['ADMIN_PWD']:
                 clr_fail(client_ip)
-                add_log(client_ip, "Login Successful")
+                add_log(client_ip, f"Admin Login Successful")
                 tk = hashlib.sha256(pwd.encode()).hexdigest()
                 self.send_response(302)
                 self.send_header("Set-Cookie", f"auth={tk}; Path=/; HttpOnly")
+                self.send_header("Set-Cookie", f"auth_user=; Max-Age=0; Path=/; HttpOnly")
                 self.send_header("Location", "/")
                 self.end_headers()
-            else: 
-                max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
-                rec_fail(client_ip, max_fails)
-                self.send_error(401)
-                return
+            else:
+                # Multi-user login
+                users = load_users()
+                if username in users and users[username]['password'] == hashlib.sha256(pwd.encode()).hexdigest():
+                    clr_fail(client_ip)
+                    add_log(client_ip, f"User Login: {username}")
+                    token = hashlib.sha256(f"{username}:{users[username]['password']}".encode()).hexdigest()
+                    self.send_response(302)
+                    self.send_header("Set-Cookie", f"auth_user={token}; Path=/; HttpOnly")
+                    self.send_header("Set-Cookie", f"auth=; Max-Age=0; Path=/; HttpOnly")
+                    self.send_header("Location", "/")
+                    self.end_headers()
+                else:
+                    max_fails = int(self.CONFIG.get('MAX_FAILS', 15))
+                    rec_fail(client_ip, max_fails)
+                    self.send_error(401)
+                    return
                 
         if self.get_role() != "admin": return
         
         if parsed.path == "/upload": 
             q = urllib.parse.parse_qs(parsed.query).get('dir', [''])[0]
             curr = self.get_safe_path(q)
+            # Quota check for regular users
+            if self.get_role() == 'user':
+                uname = self.get_logged_username()
+                users = load_users()
+                if uname in users:
+                    quota = users[uname].get('quota', 0)
+                    if quota > 0:
+                        used = get_user_used(self.CONFIG['UPLOAD_DIR'], uname)
+                        content_len = int(self.headers.get('Content-Length', 0))
+                        if used + content_len > quota:
+                            self.send_response(413)
+                            self.end_headers()
+                            self.wfile.write(b"Storage quota exceeded!")
+                            return
             self._handle_upload(curr)
             return
+        
+        elif parsed.path == "/api/users" and self.get_role() == "admin":
+            l = int(self.headers.get('Content-Length', 0))
+            data = urllib.parse.parse_qs(self.rfile.read(l).decode())
+            act = data.get('action', [''])[0]
+            uname = data.get('username', [''])[0].strip()
+            
+            if act == 'add':
+                pwd = data.get('password', [''])[0]
+                quota_mb = int(data.get('quota_mb', ['0'])[0])
+                if not uname or not pwd:
+                    self.send_response(400); self.end_headers(); self.wfile.write(b"Missing fields"); return
+                users = load_users()
+                if uname in users:
+                    self.send_response(200); self.end_headers(); self.wfile.write(b"EXISTS"); return
+                users[uname] = {
+                    'password': hashlib.sha256(pwd.encode()).hexdigest(),
+                    'quota': quota_mb * 1024 * 1024,
+                    'created': datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                }
+                save_users(users)
+                get_user_dir(self.CONFIG['UPLOAD_DIR'], uname)  # create dir
+                add_log(client_ip, f"Admin Added User: {uname}")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+                
+            elif act == 'delete':
+                users = load_users()
+                if uname in users:
+                    del users[uname]
+                    save_users(users)
+                    add_log(client_ip, f"Admin Deleted User: {uname}")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+                
+            elif act == 'edit':
+                quota_mb = int(data.get('quota_mb', ['0'])[0])
+                new_pwd = data.get('password', [''])[0]
+                users = load_users()
+                if uname in users:
+                    users[uname]['quota'] = quota_mb * 1024 * 1024
+                    if new_pwd:
+                        users[uname]['password'] = hashlib.sha256(new_pwd.encode()).hexdigest()
+                    save_users(users)
+                    add_log(client_ip, f"Admin Edited User: {uname}")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+            
+            self.send_response(400); self.end_headers(); return
             
         elif parsed.path == "/action":
             l = int(self.headers.get('Content-Length', 0))
